@@ -1,19 +1,15 @@
 # Agent Smith - Matrix Combat Arena
 
-<img src="./docs/gameplay.png" alt="Agent Smith Gameplay" width="800"/>
-
 A multi-agent Matrix combat demo built with **Spring Boot 4**, **LangChain4j Agentic**, and **D3.js**.
 
-Agent Smith (supervisor) coordinates Agents Brown and Jones to fight Neo in pixel-art combat rounds — powered by GPT-5-mini on Azure AI Services via the LangChain4j `supervisorBuilder` pattern.
-
-![Matrix Combat Arena](docs/screenshot.png)
+Agent Smith (supervisor) coordinates Agents Brown and Jones to fight Neo in pixel-art combat rounds — powered by GPT-5-nano on Azure AI Services using three LangChain4j agentic patterns.
 
 ## Architecture
 
 ```
 ┌─────────────────────────────────────────────────┐
 │  D3.js Frontend (pixel characters + Matrix rain) │
-│  SSE streaming ← /api/fight                      │
+│  SSE streaming ← /api/fight/{mode}               │
 └──────────────────────┬──────────────────────────┘
                        │
 ┌──────────────────────▼──────────────────────────┐
@@ -21,7 +17,11 @@ Agent Smith (supervisor) coordinates Agents Brown and Jones to fight Neo in pixe
 └──────────────────────┬──────────────────────────┘
                        │
 ┌──────────────────────▼──────────────────────────┐
-│  LangChain4j Agentic Supervisor Pattern          │
+│  LangChain4j Agentic Patterns                    │
+│                                                  │
+│  ⚔ Supervisor: Smith plans, deploys Brown+Jones  │
+│  ⚡ Parallel:  Brown+Jones fight simultaneously  │
+│  🔄 Loop:     Auto-battle until first to 5 wins  │
 │                                                  │
 │  Smith (SupervisorAgent)                         │
 │    ├── Brown (@Agent sub-agent)                  │
@@ -29,7 +29,7 @@ Agent Smith (supervisor) coordinates Agents Brown and Jones to fight Neo in pixe
 └──────────────────────┬──────────────────────────┘
                        │ DefaultAzureCredential
 ┌──────────────────────▼──────────────────────────┐
-│  Azure AI Services (GPT-5-mini)                  │
+│  Azure AI Services (GPT-5-nano)                  │
 │  Managed Identity / Entra ID auth                │
 └─────────────────────────────────────────────────┘
 ```
@@ -38,56 +38,90 @@ Agent Smith (supervisor) coordinates Agents Brown and Jones to fight Neo in pixe
 
 - **Java 21+**
 - **Maven 3.9+**
-- **Azure CLI** (`az login`)
-- **Azure Developer CLI** (`azd auth login`)
+- **Azure CLI** — [install](https://learn.microsoft.com/cli/azure/install-azure-cli)
+- **Azure Developer CLI** — [install](https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd)
 - An Azure subscription
 
 ## Quick Start
 
-### 1. Deploy the AI model to Azure
+### 1. Login to Azure
 
 ```bash
+az login
 azd auth login
+```
+
+### 2. Deploy the AI model
+
+```bash
 azd up
 ```
 
 This provisions:
-- Azure AI Services account with GPT-5-mini deployment (100K TPM)
-- Lenient content filter (all thresholds set to High)
-- Your signed-in user gets `Cognitive Services OpenAI User` role
+- Azure AI Services account with **GPT-5-nano** deployment (100K TPM)
+- Lenient content filter (all thresholds at High)
 
-### 2. Grant yourself access (if not already done)
+### 3. Grant yourself the OpenAI User role
 
+**Bash/macOS:**
 ```bash
 USER_ID=$(az ad signed-in-user show --query id -o tsv)
+SCOPE=$(azd env get-values | grep AZURE_AI_ENDPOINT | cut -d'"' -f2)
+ACCOUNT_NAME=$(echo $SCOPE | sed 's|https://||;s|\.openai\.azure\.com/||')
+RG=$(az cognitiveservices account list --query "[?name=='$ACCOUNT_NAME'].resourceGroup" -o tsv)
+
 az role assignment create \
   --role "Cognitive Services OpenAI User" \
   --assignee $USER_ID \
-  --scope $(az cognitiveservices account show -n <ai-account-name> -g <rg-name> --query id -o tsv)
+  --scope $(az cognitiveservices account show -n $ACCOUNT_NAME -g $RG --query id -o tsv)
 ```
 
-### 3. Run locally
+**PowerShell:**
+```powershell
+$userId = az ad signed-in-user show --query id -o tsv
+# Use the account name from azd env get-values output
+az role assignment create `
+  --role "Cognitive Services OpenAI User" `
+  --assignee $userId `
+  --scope (az cognitiveservices account show -n <ai-account-name> -g <rg-name> --query id -o tsv)
+```
 
+> **Note:** Role assignment can take 1-2 minutes to propagate.
+
+### 4. Run the app locally
+
+**Bash/macOS:**
 ```bash
-# Get the endpoint from azd
-azd env get-values | grep AZURE_AI
-
-# Set env vars and run
-export AZURE_AI_ENDPOINT="https://<your-account>.openai.azure.com/"
-export AZURE_AI_DEPLOYMENT="gpt-5-mini"
+export AZURE_AI_ENDPOINT=$(azd env get-values | grep AZURE_AI_ENDPOINT | cut -d'"' -f2)
+export AZURE_AI_DEPLOYMENT="gpt-5-nano"
 mvn spring-boot:run
 ```
+
+**PowerShell:**
+```powershell
+$env:AZURE_AI_ENDPOINT = "https://<your-account>.openai.azure.com/"
+$env:AZURE_AI_DEPLOYMENT = "gpt-5-nano"
+mvn spring-boot:run
+```
+
+> **Tip:** Run `azd env get-values` to see your endpoint.
+
+### 5. Open the game
 
 Open **http://localhost:8080** in your browser.
 
 ## How to Play
 
-1. Click **⚔ FIGHT ⚔** to start a combat round
-2. Agent Smith (supervisor) deploys Brown and Jones against Neo
-3. Each fight has a **~30% chance the agent wins** — Neo can lose!
-4. Watch the combat log for Matrix-themed fight narratives
-5. Click **↺ RESET** to zero the scores
-6. Keep fighting to see who comes out on top
+| Button | Pattern | What happens |
+|--------|---------|-------------|
+| **⚔ FIGHT** | Supervisor (#5) | Smith coordinates — plans, deploys Brown then Jones via LLM |
+| **⚡ FAST** | Parallel (#2) | Brown and Jones fight Neo simultaneously — faster |
+| **🔄 AUTO 5** | Loop (#3) | Auto-battles rounds until someone hits 5 wins |
+| **↺ RESET** | — | Resets scores to 0 |
+
+- Each fight has a **~30% chance the agent wins** — Neo can lose!
+- Agent Smith delivers a random movie quote each round
+- Watch the combat log for fight results and Smith's commentary
 
 ## Scoring
 
@@ -102,8 +136,8 @@ Open **http://localhost:8080** in your browser.
 |-----------|-----------|
 | Backend | Spring Boot 4.0.3, Java 21 |
 | AI Agents | LangChain4j 1.12.1 + langchain4j-agentic 1.12.1-beta21 |
-| Agent Pattern | `AgenticServices.supervisorBuilder()` with `@Agent` sub-agents |
-| LLM | GPT-5-mini on Azure AI Services |
+| Agent Patterns | Supervisor, Parallel, Loop (`AgenticServices`) |
+| LLM | GPT-5-nano on Azure AI Services |
 | Auth | `DefaultAzureCredential` (Managed Identity / Entra ID) |
 | Frontend | D3.js v7, pixel art, SSE streaming |
 | Infra | Bicep + Azure Developer CLI (`azd`) |
@@ -114,26 +148,26 @@ Open **http://localhost:8080** in your browser.
 src/main/java/com/agentsmith/
 ├── AgentSmithApplication.java          # Spring Boot entry point
 ├── agents/
-│   ├── AgentBrown.java                 # @Agent - Brown sub-agent
-│   ├── AgentJones.java                 # @Agent - Jones sub-agent
+│   ├── AgentBrown.java                 # @Agent sub-agent (Brown)
+│   ├── AgentJones.java                 # @Agent sub-agent (Jones)
 │   └── MatrixSupervisor.java           # Supervisor interface (Smith)
 ├── config/
 │   └── AiConfig.java                   # ChatModel bean (Azure + DefaultAzureCredential)
 ├── controller/
-│   └── CombatController.java           # SSE /api/fight endpoint
+│   └── CombatController.java           # SSE endpoints: /api/fight/{mode}
 └── service/
     ├── CombatEvent.java                # SSE event record
-    └── CombatService.java              # Supervisor orchestration + scoring
+    └── CombatService.java              # 3 patterns: supervisor, parallel, auto-battle
 
 src/main/resources/
 ├── application.properties
 └── static/index.html                   # D3.js pixel combat frontend
 
 infra/
-├── main.bicep                          # Azure infra (AI Services + model)
+├── main.bicep                          # AI Services + model deployment
 ├── main.parameters.json
 └── modules/
-    └── ai-services.bicep               # AI account + GPT-5-mini deployment + content filter
+    └── ai-services.bicep               # AI account + GPT-5-nano + content filter
 ```
 
 ## Cleanup

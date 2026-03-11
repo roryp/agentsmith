@@ -3,6 +3,14 @@ name: agentsmith
 metadata:
   template: agentsmith-matrix-combat
 
+services:
+  web:
+    project: .
+    language: java
+    host: containerapp
+    docker:
+      path: Dockerfile
+
 infra:
   provider: bicep
   path: infra

@@ -43,5 +43,37 @@ module aiServices 'modules/ai-services.bicep' = {
   }
 }
 
+// Azure Container Registry
+module acr 'modules/acr.bicep' = {
+  name: 'acr'
+  scope: rg
+  params: {
+    name: '${abbrs.containerRegistry}${resourceToken}'
+    location: location
+    tags: tags
+  }
+}
+
+// Container App
+module containerApp 'modules/container-app.bicep' = {
+  name: 'container-app'
+  scope: rg
+  params: {
+    name: '${abbrs.containerApp}${resourceToken}'
+    location: location
+    tags: tags
+    aiServicesEndpoint: aiServices.outputs.endpoint
+    aiServicesName: aiServices.outputs.name
+    deploymentName: modelName
+    imageName: 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest'
+    registryServer: acr.outputs.loginServer
+    registryUsername: acr.outputs.name
+    registryPassword: acr.outputs.password
+  }
+}
+
 output AZURE_AI_ENDPOINT string = aiServices.outputs.endpoint
 output AZURE_AI_DEPLOYMENT string = modelName
+output AZURE_CONTAINER_REGISTRY_ENDPOINT string = acr.outputs.loginServer
+output AZURE_CONTAINER_REGISTRY_NAME string = acr.outputs.name
+output WEB_URI string = containerApp.outputs.uri

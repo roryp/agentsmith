@@ -1,6 +1,8 @@
 {
   "resourceGroup": "rg-",
   "aiServices": "ai-",
+  "containerRegistry": "cr",
+  "containerApp": "ca-",
   "appService": "app-",
   "appServicePlan": "plan-"
 }
