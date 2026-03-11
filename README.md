@@ -127,16 +127,28 @@ Open **http://localhost:8080** in your browser.
 | **🔄 AUTO 5** | Loop (#3) | Auto-battles rounds until someone hits 5 wins |
 | **↺ RESET** | — | Resets scores to 0 |
 
-- Each fight has a **~30% chance** the agent wins (~40% for Smith)
-- All agents are built via `AgenticServices.agentBuilder()` with `@Agent` interfaces
-- Watch the combat log for LLM-generated fight narratives
+- Each round, all three agents fight Neo — whoever wins the **majority** (2 out of 3) wins the round
+- Agent win chances per sub-fight: Brown 50%, Jones 45%, Smith 55%
+- Auto-battle resets scores and loops until one side reaches 5 round-wins
+- Watch the combat log for **LLM-generated fight narratives** — every sub-fight is a real LLM call
 
 ## Scoring
 
-| Event | Neo | Agents |
-|-------|-----|--------|
-| Agent loses fight | +1 | — |
-| Agent wins fight | — | +1 |
+| Mode | How scoring works |
+|------|-------------------|
+| **Sequential / Parallel** | Each agent sub-fight awards 1 point to the winner (Neo or Agents) |
+| **Auto-battle (Loop)** | **Round-based**: 3 sub-fights per round, majority wins → 1 point. First to 5 round-wins. |
+
+## How the LLM Agents Work
+
+Each agent (`AgentBrown`, `AgentJones`, `AgentSmith`) is a LangChain4j `@Agent` interface with a `@SystemMessage` prompt that defines their personality. The flow:
+
+1. **`AiConfig`** creates an `AzureOpenAiChatModel` bean using your Azure OpenAI endpoint + deployment with Entra ID auth (`DefaultAzureCredential`)
+2. **`CombatService`** builds each agent via `AgenticServices.agentBuilder(AgentX.class).chatModel(chatModel).build()`
+3. Each `fight()` call sends a prompt to the LLM (e.g. *"Round 3. You WIN. One sentence."*) and the agent generates a unique combat narration
+4. In auto-battle line, all three `fight()` calls run **concurrently** via `CompletableFuture.supplyAsync()` — 3 parallel LLM calls per round
+
+The **win/loss outcome** is pre-determined by random probabilities, but the **combat narration text** is generated live by the LLM each time, giving every fight a unique description.
 
 ## Tech Stack
 

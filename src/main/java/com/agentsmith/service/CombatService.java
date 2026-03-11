@@ -41,9 +41,9 @@ public class CombatService {
     public void runSequentialRound(SseEmitter emitter) {
         int round = currentRound.incrementAndGet();
         try {
-            boolean brownWins = ThreadLocalRandom.current().nextInt(100) < 30;
-            boolean jonesWins = ThreadLocalRandom.current().nextInt(100) < 30;
-            boolean smithWins = ThreadLocalRandom.current().nextInt(100) < 40; // Smith is stronger
+            boolean brownWins = ThreadLocalRandom.current().nextInt(100) < 50;
+            boolean jonesWins = ThreadLocalRandom.current().nextInt(100) < 45;
+            boolean smithWins = ThreadLocalRandom.current().nextInt(100) < 55;
 
             // Build all three agents via AgenticServices
             AgentBrown brownAgent = AgenticServices.agentBuilder(AgentBrown.class).chatModel(chatModel).build();
@@ -90,9 +90,9 @@ public class CombatService {
     public void runParallelRound(SseEmitter emitter) {
         int round = currentRound.incrementAndGet();
         try {
-            boolean brownWins = ThreadLocalRandom.current().nextInt(100) < 30;
-            boolean jonesWins = ThreadLocalRandom.current().nextInt(100) < 30;
-            boolean smithWins = ThreadLocalRandom.current().nextInt(100) < 40;
+            boolean brownWins = ThreadLocalRandom.current().nextInt(100) < 50;
+            boolean jonesWins = ThreadLocalRandom.current().nextInt(100) < 45;
+            boolean smithWins = ThreadLocalRandom.current().nextInt(100) < 55;
 
             // Build agents via AgenticServices
             AgentBrown brownAgent = AgenticServices.agentBuilder(AgentBrown.class).chatModel(chatModel).build();
@@ -139,22 +139,26 @@ public class CombatService {
         }
     }
 
-    // ─── Pattern 3: Loop (Auto-battle to 5 wins) via AgenticServices agents ───
+    // ─── Pattern 3: Loop (Auto-battle to 5 round-wins) via AgenticServices agents ───
     public void runAutoBattle(SseEmitter emitter) {
         try {
+            // Reset scores for a fresh auto-battle
+            resetScores();
+
             // Build agents once, reuse across rounds
             AgentBrown brownAgent = AgenticServices.agentBuilder(AgentBrown.class).chatModel(chatModel).build();
             AgentJones jonesAgent = AgenticServices.agentBuilder(AgentJones.class).chatModel(chatModel).build();
             AgentSmith smithAgent = AgenticServices.agentBuilder(AgentSmith.class).chatModel(chatModel).build();
 
             sendEvent(emitter, CombatEvent.of("System", "system",
-                    "AUTO-BATTLE: First to 5 wins!", 0, neoScore.get(), agentsScore.get()));
+                    "AUTO-BATTLE: First to 5 round wins!", 0, neoScore.get(), agentsScore.get()));
 
             while (neoScore.get() < 5 && agentsScore.get() < 5) {
                 int round = currentRound.incrementAndGet();
-                boolean brownWins = ThreadLocalRandom.current().nextInt(100) < 30;
-                boolean jonesWins = ThreadLocalRandom.current().nextInt(100) < 30;
-                boolean smithWins = ThreadLocalRandom.current().nextInt(100) < 40;
+                // Balanced probabilities: ~50/50 per round when using majority scoring
+                boolean brownWins = ThreadLocalRandom.current().nextInt(100) < 50;
+                boolean jonesWins = ThreadLocalRandom.current().nextInt(100) < 45;
+                boolean smithWins = ThreadLocalRandom.current().nextInt(100) < 55;
 
                 // Fire all three agents in parallel for speed
                 String bp = "Round " + round + ". " + (brownWins ? "You WIN." : "You LOSE.") + " One sentence.";
@@ -169,20 +173,28 @@ public class CombatService {
                 String jonesResult = jf.join();
                 String smithResult = sf.join();
 
-                if (brownWins) { agentsScore.incrementAndGet(); } else { neoScore.incrementAndGet(); }
+                // Show individual sub-fight results (no score change yet)
                 sendEvent(emitter, CombatEvent.of("Brown", brownWins ? "attack-win" : "attack",
                         brownResult, round, neoScore.get(), agentsScore.get()));
 
-                if (jonesWins) { agentsScore.incrementAndGet(); } else { neoScore.incrementAndGet(); }
                 sendEvent(emitter, CombatEvent.of("Jones", jonesWins ? "attack-win" : "attack",
                         jonesResult, round, neoScore.get(), agentsScore.get()));
 
-                if (smithWins) { agentsScore.incrementAndGet(); } else { neoScore.incrementAndGet(); }
                 sendEvent(emitter, CombatEvent.of("Smith", smithWins ? "attack-win" : "attack",
                         smithResult, round, neoScore.get(), agentsScore.get()));
 
-                int agentWins = (brownWins ? 1 : 0) + (jonesWins ? 1 : 0) + (smithWins ? 1 : 0);
-                String roundResult = agentWins >= 2 ? "Agents dominate!" : "Neo fights on.";
+                // Round-based scoring: majority of 3 sub-fights wins the round (1 point)
+                int agentSubWins = (brownWins ? 1 : 0) + (jonesWins ? 1 : 0) + (smithWins ? 1 : 0);
+                if (agentSubWins >= 2) {
+                    agentsScore.incrementAndGet();
+                } else {
+                    neoScore.incrementAndGet();
+                }
+
+                String roundResult = agentSubWins == 3 ? "All three agents overwhelm Neo! Agents win the round!"
+                        : agentSubWins == 2 ? "Agents dominate! Agents win the round!"
+                        : agentSubWins == 1 ? "Split round. Neo wins the round!"
+                        : "Neo defeats all three. Neo wins the round!";
                 sendEvent(emitter, CombatEvent.of("Neo", "result", roundResult,
                         round, neoScore.get(), agentsScore.get()));
 
