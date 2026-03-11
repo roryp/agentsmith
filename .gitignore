@@ -15,3 +15,4 @@ target/
 ### Azure ###
 .azure/
 .playwright-mcp/
+IMAGE_GENERATION_GUIDE.md
