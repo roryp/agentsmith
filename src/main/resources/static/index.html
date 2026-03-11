@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agent Smith - Matrix Combat</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background: #0a0a0a;
+            color: #00ff00;
+            font-family: 'Press Start 2P', monospace;
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        /* Matrix rain background */
+        #matrix-rain {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 0;
+            opacity: 0.15;
+        }
+
+        .game-container {
+            position: relative;
+            z-index: 1;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            padding: 10px;
+        }
+
+        /* Header / Scoreboard */
+        .header {
+            text-align: center;
+            padding: 10px;
+            border-bottom: 2px solid #00ff00;
+            text-shadow: 0 0 10px #00ff00;
+        }
+        .header h1 {
+            font-size: 18px;
+            margin-bottom: 8px;
+            color: #00ff00;
+        }
+        .scoreboard {
+            display: flex; justify-content: center; gap: 40px;
+            font-size: 11px;
+        }
+        .score-item { display: flex; align-items: center; gap: 8px; }
+        .score-label { color: #888; }
+        .score-neo { color: #00ffff; text-shadow: 0 0 8px #00ffff; }
+        .score-agents { color: #ff4444; text-shadow: 0 0 8px #ff4444; }
+        .round-display { color: #ffff00; text-shadow: 0 0 8px #ffff00; }
+
+        /* Arena */
+        .arena {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            min-height: 0;
+        }
+        #arena-svg {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Combat Log */
+        .combat-log {
+            height: 180px;
+            border-top: 2px solid #00ff00;
+            overflow-y: auto;
+            padding: 8px;
+            font-size: 8px;
+            line-height: 1.6;
+            background: rgba(0, 0, 0, 0.8);
+        }
+        .combat-log::-webkit-scrollbar { width: 6px; }
+        .combat-log::-webkit-scrollbar-track { background: #111; }
+        .combat-log::-webkit-scrollbar-thumb { background: #00ff00; }
+
+        .log-entry { margin-bottom: 4px; padding: 4px; border-left: 3px solid transparent; }
+        .log-entry.brown { border-color: #8B4513; color: #D2691E; }
+        .log-entry.jones { border-color: #808080; color: #C0C0C0; }
+        .log-entry.smith { border-color: #00ff00; color: #00ff00; }
+        .log-entry.neo { border-color: #00ffff; color: #00ffff; }
+        .log-entry.system { border-color: #ffff00; color: #ffff00; }
+        .log-entry .agent-tag {
+            font-weight: bold;
+            display: inline-block;
+            min-width: 60px;
+        }
+
+        /* Controls */
+        .controls {
+            display: flex; justify-content: center; gap: 20px;
+            padding: 10px;
+            border-top: 2px solid #00ff00;
+        }
+        button {
+            font-family: 'Press Start 2P', monospace;
+            font-size: 10px;
+            padding: 10px 20px;
+            border: 2px solid #00ff00;
+            background: transparent;
+            color: #00ff00;
+            cursor: pointer;
+            text-shadow: 0 0 5px #00ff00;
+            transition: all 0.2s;
+        }
+        button:hover {
+            background: #00ff00;
+            color: #0a0a0a;
+            box-shadow: 0 0 20px #00ff00;
+        }
+        button:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+        button.reset-btn {
+            border-color: #ff4444;
+            color: #ff4444;
+            text-shadow: 0 0 5px #ff4444;
+        }
+        button.reset-btn:hover {
+            background: #ff4444;
+            color: #0a0a0a;
+            box-shadow: 0 0 20px #ff4444;
+        }
+
+        .status-text {
+            text-align: center;
+            font-size: 9px;
+            padding: 4px;
+            color: #888;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="matrix-rain"></canvas>
+    <div class="game-container">
+        <div class="header">
+            <h1>⬛ THE MATRIX ⬛ AGENT COMBAT ARENA</h1>
+            <div class="scoreboard">
+                <div class="score-item">
+                    <span class="score-label">NEO:</span>
+                    <span class="score-neo" id="neo-score">0</span>
+                </div>
+                <div class="score-item">
+                    <span class="round-display" id="round-display">ROUND 0</span>
+                </div>
+                <div class="score-item">
+                    <span class="score-label">AGENTS:</span>
+                    <span class="score-agents" id="agents-score">0</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="arena">
+            <svg id="arena-svg"></svg>
+        </div>
+
+        <div class="combat-log" id="combat-log">
+            <div class="log-entry system">
+                <span class="agent-tag">[SYSTEM]</span>
+                Initializing Matrix combat simulation...
+            </div>
+        </div>
+
+        <div class="status-text" id="status-text">Ready to fight</div>
+
+        <div class="controls">
+            <button id="fight-btn" onclick="startFight()">⚔ FIGHT ⚔</button>
+            <button id="reset-btn" class="reset-btn" onclick="resetGame()">↺ RESET</button>
+        </div>
+    </div>
+
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script>
+    // ─── Matrix Rain Background ───
+    (function() {
+        const canvas = document.getElementById('matrix-rain');
+        const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        const chars = 'アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヰヱヲン0123456789';
+        const fontSize = 14;
+        const columns = Math.floor(canvas.width / fontSize);
+        const drops = Array(columns).fill(1);
+
+        function drawRain() {
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#00ff00';
+            ctx.font = fontSize + 'px monospace';
+            for (let i = 0; i < drops.length; i++) {
+                const text = chars[Math.floor(Math.random() * chars.length)];
+                ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+                if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) drops[i] = 0;
+                drops[i]++;
+            }
+        }
+        setInterval(drawRain, 50);
+        window.addEventListener('resize', () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; });
+    })();
+
+    // ─── Pixel Character Definitions ───
+    // Each character is an 8x8 pixel grid
+    const PIXEL_CHARS = {
+        neo: {
+            color: '#00ffff',
+            glow: '#00ffff',
+            pixels: [
+                '..XXXX..',
+                '.X....X.',
+                '.X.XX.X.',
+                '.X....X.',
+                '..XXXX..',
+                '.XXXXXX.',
+                'X.XXXX.X',
+                '..X..X..',
+            ]
+        },
+        brown: {
+            color: '#D2691E',
+            glow: '#8B4513',
+            pixels: [
+                '..XXXX..',
+                '.X....X.',
+                '.X.XX.X.',
+                '.X....X.',
+                '..XXXX..',
+                '.XXXXXX.',
+                'X.XXXX.X',
+                '..X..X..',
+            ]
+        },
+        jones: {
+            color: '#C0C0C0',
+            glow: '#808080',
+            pixels: [
+                '..XXXX..',
+                '.X....X.',
+                '.X.XX.X.',
+                '.X....X.',
+                '..XXXX..',
+                '.XXXXXX.',
+                'X.XXXX.X',
+                '..X..X..',
+            ]
+        },
+        smith: {
+            color: '#00ff00',
+            glow: '#00ff00',
+            pixels: [
+                '..XXXX..',
+                '.XXXXXX.',
+                '.X.XX.X.',
+                '.X....X.',
+                '..XXXX..',
+                '.XXXXXX.',
+                'X.XXXX.X',
+                '..X..X..',
+            ]
+        }
+    };
+
+    // ─── D3 Arena Setup ───
+    const svg = d3.select('#arena-svg');
+    let arenaWidth, arenaHeight, pixelSize;
+
+    function setupArena() {
+        const container = document.querySelector('.arena');
+        arenaWidth = container.clientWidth;
+        arenaHeight = container.clientHeight;
+        pixelSize = Math.max(4, Math.min(arenaWidth, arenaHeight) / 50);
+
+        svg.attr('viewBox', `0 0 ${arenaWidth} ${arenaHeight}`)
+           .attr('preserveAspectRatio', 'xMidYMid meet');
+
+        drawScene('idle');
+    }
+
+    function drawPixelChar(group, charDef, x, y, scale) {
+        const s = pixelSize * scale;
+        charDef.pixels.forEach((row, ry) => {
+            [...row].forEach((ch, rx) => {
+                if (ch === 'X') {
+                    group.append('rect')
+                        .attr('x', x + rx * s)
+                        .attr('y', y + ry * s)
+                        .attr('width', s)
+                        .attr('height', s)
+                        .attr('fill', charDef.color)
+                        .attr('opacity', 0.9)
+                        .style('filter', `drop-shadow(0 0 ${s}px ${charDef.glow})`);
+                }
+            });
+        });
+    }
+
+    function drawScene(state) {
+        svg.selectAll('*').remove();
+
+        const defs = svg.append('defs');
+
+        // Glow filter
+        const filter = defs.append('filter').attr('id', 'glow');
+        filter.append('feGaussianBlur').attr('stdDeviation', '3').attr('result', 'blur');
+        filter.append('feMerge').selectAll('feMergeNode')
+            .data(['blur', 'SourceGraphic']).enter()
+            .append('feMergeNode').attr('in', d => d);
+
+        // Ground line
+        svg.append('line')
+            .attr('x1', 0).attr('y1', arenaHeight * 0.75)
+            .attr('x2', arenaWidth).attr('y2', arenaHeight * 0.75)
+            .attr('stroke', '#00ff00').attr('stroke-width', 2)
+            .attr('opacity', 0.3);
+
+        const charScale = 1.2;
+        const charH = 8 * pixelSize * charScale;
+        const groundY = arenaHeight * 0.75 - charH;
+
+        // Draw characters based on state
+        const brownG = svg.append('g').attr('class', 'char-brown');
+        const jonesG = svg.append('g').attr('class', 'char-jones');
+        const neoG = svg.append('g').attr('class', 'char-neo');
+        const smithG = svg.append('g').attr('class', 'char-smith');
+
+        const positions = {
+            brown: { x: arenaWidth * 0.15, y: groundY },
+            jones: { x: arenaWidth * 0.30, y: groundY },
+            neo:   { x: arenaWidth * 0.55, y: groundY },
+            smith: { x: arenaWidth * 0.80, y: groundY },
+        };
+
+        // Labels
+        const labelStyle = { 'font-family': "'Press Start 2P', monospace", 'font-size': '8px' };
+
+        drawPixelChar(brownG, PIXEL_CHARS.brown, positions.brown.x, positions.brown.y, charScale);
+        svg.append('text').attr('x', positions.brown.x + 16).attr('y', positions.brown.y - 10)
+           .attr('fill', '#D2691E').attr('text-anchor', 'middle')
+           .style('font-family', labelStyle['font-family']).style('font-size', labelStyle['font-size'])
+           .text('BROWN');
+
+        drawPixelChar(jonesG, PIXEL_CHARS.jones, positions.jones.x, positions.jones.y, charScale);
+        svg.append('text').attr('x', positions.jones.x + 16).attr('y', positions.jones.y - 10)
+           .attr('fill', '#C0C0C0').attr('text-anchor', 'middle')
+           .style('font-family', labelStyle['font-family']).style('font-size', labelStyle['font-size'])
+           .text('JONES');
+
+        drawPixelChar(neoG, PIXEL_CHARS.neo, positions.neo.x, positions.neo.y, charScale);
+        svg.append('text').attr('x', positions.neo.x + 16).attr('y', positions.neo.y - 10)
+           .attr('fill', '#00ffff').attr('text-anchor', 'middle')
+           .style('font-family', labelStyle['font-family']).style('font-size', labelStyle['font-size'])
+           .text('NEO');
+
+        drawPixelChar(smithG, PIXEL_CHARS.smith, positions.smith.x, positions.smith.y, charScale);
+        svg.append('text').attr('x', positions.smith.x + 16).attr('y', positions.smith.y - 10)
+           .attr('fill', '#00ff00').attr('text-anchor', 'middle')
+           .style('font-family', labelStyle['font-family']).style('font-size', labelStyle['font-size'])
+           .text('SMITH');
+
+        // Animate based on state
+        if (state === 'brown-attack') {
+            animateAttack(brownG, positions.brown, positions.neo);
+        } else if (state === 'jones-attack') {
+            animateAttack(jonesG, positions.jones, positions.neo);
+        } else if (state === 'neo-wins') {
+            animateVictory(neoG, positions.neo);
+        }
+    }
+
+    function animateAttack(charGroup, from, to) {
+        charGroup.transition()
+            .duration(300)
+            .attr('transform', `translate(${(to.x - from.x) * 0.4}, 0)`)
+            .transition()
+            .duration(200)
+            .attr('transform', 'translate(0, 0)');
+
+        // Impact flash
+        setTimeout(() => {
+            svg.append('circle')
+                .attr('cx', (from.x + to.x) / 2 + 16)
+                .attr('cy', to.y + 20)
+                .attr('r', 5)
+                .attr('fill', '#ffff00')
+                .attr('opacity', 1)
+                .transition().duration(300)
+                .attr('r', 30)
+                .attr('opacity', 0)
+                .remove();
+        }, 300);
+    }
+
+    function animateVictory(charGroup, pos) {
+        charGroup.transition()
+            .duration(200)
+            .attr('transform', 'translate(0, -15)')
+            .transition().duration(200)
+            .attr('transform', 'translate(0, 0)')
+            .transition().duration(200)
+            .attr('transform', 'translate(0, -10)')
+            .transition().duration(200)
+            .attr('transform', 'translate(0, 0)');
+
+        // Victory particles
+        for (let i = 0; i < 8; i++) {
+            svg.append('circle')
+                .attr('cx', pos.x + 16)
+                .attr('cy', pos.y + 20)
+                .attr('r', 2)
+                .attr('fill', '#00ffff')
+                .transition().duration(500).delay(i * 50)
+                .attr('cx', pos.x + 16 + (Math.random() - 0.5) * 80)
+                .attr('cy', pos.y + 20 + (Math.random() - 0.5) * 80)
+                .attr('opacity', 0)
+                .remove();
+        }
+    }
+
+    // ─── Combat Logic ───
+    let fighting = false;
+
+    function startFight() {
+        if (fighting) return;
+        fighting = true;
+        document.getElementById('fight-btn').disabled = true;
+        document.getElementById('status-text').textContent = 'Agents engaging Neo...';
+
+        const eventSource = new EventSource('/api/fight');
+
+        eventSource.addEventListener('combat', (e) => {
+            const data = JSON.parse(e.data);
+            addLogEntry(data);
+            updateScores(data);
+
+            // Animate based on event
+            if (data.agent === 'Brown') {
+                drawScene('brown-attack');
+            } else if (data.agent === 'Jones') {
+                drawScene('jones-attack');
+            } else if (data.type === 'result') {
+                setTimeout(() => drawScene('neo-wins'), 500);
+            }
+        });
+
+        eventSource.onerror = () => {
+            eventSource.close();
+            fighting = false;
+            document.getElementById('fight-btn').disabled = false;
+            document.getElementById('status-text').textContent = 'Ready for next round';
+            drawScene('idle');
+        };
+    }
+
+    function addLogEntry(data) {
+        const log = document.getElementById('combat-log');
+        const agentClass = data.agent.toLowerCase();
+        const entry = document.createElement('div');
+        entry.className = `log-entry ${agentClass}`;
+        entry.innerHTML = `<span class="agent-tag">[${data.agent.toUpperCase()}]</span> ${data.message}`;
+        log.appendChild(entry);
+        log.scrollTop = log.scrollHeight;
+    }
+
+    function updateScores(data) {
+        document.getElementById('neo-score').textContent = data.neoScore;
+        document.getElementById('agents-score').textContent = data.agentsScore;
+        document.getElementById('round-display').textContent = `ROUND ${data.round}`;
+    }
+
+    async function resetGame() {
+        const resp = await fetch('/api/reset', { method: 'POST' });
+        const data = await resp.json();
+        document.getElementById('neo-score').textContent = '0';
+        document.getElementById('agents-score').textContent = '0';
+        document.getElementById('round-display').textContent = 'ROUND 0';
+        document.getElementById('combat-log').innerHTML =
+            '<div class="log-entry system"><span class="agent-tag">[SYSTEM]</span> Combat arena reset. Agents reloaded.</div>';
+        document.getElementById('status-text').textContent = 'Ready to fight';
+        drawScene('idle');
+    }
+
+    // Initialize
+    window.addEventListener('load', setupArena);
+    window.addEventListener('resize', setupArena);
+    </script>
+</body>
+</html>

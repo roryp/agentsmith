@@ -1,0 +1,1 @@
+[    6199ms] [ERROR] Failed to load resource: net::ERR_INCOMPLETE_CHUNKED_ENCODING @ http://localhost:8080/api/fight:0

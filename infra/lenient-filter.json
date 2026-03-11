@@ -1,0 +1,16 @@
+{
+  "properties": {
+    "basePolicyName": "Microsoft.DefaultV2",
+    "mode": "Blocking",
+    "contentFilters": [
+      {"name": "hate", "blocking": true, "enabled": true, "source": "Prompt", "severityThreshold": "High"},
+      {"name": "sexual", "blocking": true, "enabled": true, "source": "Prompt", "severityThreshold": "High"},
+      {"name": "selfharm", "blocking": true, "enabled": true, "source": "Prompt", "severityThreshold": "High"},
+      {"name": "violence", "blocking": true, "enabled": true, "source": "Prompt", "severityThreshold": "High"},
+      {"name": "hate", "blocking": true, "enabled": true, "source": "Completion", "severityThreshold": "High"},
+      {"name": "sexual", "blocking": true, "enabled": true, "source": "Completion", "severityThreshold": "High"},
+      {"name": "selfharm", "blocking": true, "enabled": true, "source": "Completion", "severityThreshold": "High"},
+      {"name": "violence", "blocking": true, "enabled": true, "source": "Completion", "severityThreshold": "High"}
+    ]
+  }
+}

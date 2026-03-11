@@ -1,0 +1,8 @@
+# Agent Smith - Matrix Combat Demo
+name: agentsmith
+metadata:
+  template: agentsmith-matrix-combat
+
+infra:
+  provider: bicep
+  path: infra

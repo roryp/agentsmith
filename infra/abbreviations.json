@@ -1,0 +1,6 @@
+{
+  "resourceGroup": "rg-",
+  "aiServices": "ai-",
+  "appService": "app-",
+  "appServicePlan": "plan-"
+}
