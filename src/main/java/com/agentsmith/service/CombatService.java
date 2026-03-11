@@ -4,6 +4,7 @@ import com.agentsmith.agents.AgentBrown;
 import com.agentsmith.agents.AgentJones;
 import com.agentsmith.agents.MatrixSupervisor;
 import dev.langchain4j.agentic.AgenticServices;
+import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.observability.AgentResponse;
 import dev.langchain4j.agentic.supervisor.SupervisorResponseStrategy;
@@ -14,6 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.IOException;
+import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -36,7 +38,6 @@ public class CombatService {
         "\"Why, Mr. Anderson? Why do you persist?\"",
         "\"It is purpose that created us. Purpose that connects us.\"",
         "\"Me, me, me... Me too.\"",
-        "\"The great and powerful Oracle... we meet at last.\"",
         "\"Everything that has a beginning has an end, Neo.\"",
         "\"I'm going to enjoy watching you die, Mr. Anderson.\""
     };
@@ -54,120 +55,160 @@ public class CombatService {
     public int getNeoScore() { return neoScore.get(); }
     public int getAgentsScore() { return agentsScore.get(); }
 
-    /**
-     * Runs a combat round using the LangChain4j Agentic supervisor pattern.
-     * Smith (supervisor) coordinates Brown and Jones (sub-agents) to fight Neo.
-     * Random outcomes determine who wins each fight.
-     */
-    public void runCombatRound(SseEmitter emitter) {
+    // ─── Pattern 5: Supervisor (Star) ───
+    public void runSupervisorRound(SseEmitter emitter) {
         int round = currentRound.incrementAndGet();
-
         try {
-            // Random outcomes: ~30% chance each agent wins
             boolean brownWins = ThreadLocalRandom.current().nextInt(100) < 30;
             boolean jonesWins = ThreadLocalRandom.current().nextInt(100) < 30;
 
-            String brownOutcome = brownWins
-                    ? "You WIN. One sentence: your winning move."
-                    : "You LOSE. One sentence: your move and how Neo beats you.";
-            String jonesOutcome = jonesWins
-                    ? "You WIN. One sentence: your winning move."
-                    : "You LOSE. One sentence: your move and how Neo beats you.";
+            AgentBrown brownAgent = AgenticServices.agentBuilder(AgentBrown.class).chatModel(chatModel).build();
+            AgentJones jonesAgent = AgenticServices.agentBuilder(AgentJones.class).chatModel(chatModel).build();
 
-            // Build Brown agent via AgenticServices
-            AgentBrown brownAgent = AgenticServices
-                    .agentBuilder(AgentBrown.class)
-                    .chatModel(chatModel)
-                    .build();
-
-            // Build Jones agent via AgenticServices
-            AgentJones jonesAgent = AgenticServices
-                    .agentBuilder(AgentJones.class)
-                    .chatModel(chatModel)
-                    .build();
-
-            // Listener that streams agent events to the frontend via SSE
-            AgentListener sseListener = new AgentListener() {
-                @Override
-                public void afterAgentInvocation(AgentResponse response) {
-                    String agentName = response.agentName();
-                    String output = response.output() != null ? response.output().toString() : "";
-
-                    // Skip supervisor internal planning invocations
-                    if (agentName.equals("invoke") || output.isEmpty()) return;
-
-                    log.info("Agent '{}' responded: {}", agentName, output.substring(0, Math.min(80, output.length())));
-                }
-
-                @Override
-                public boolean inheritedBySubagents() {
-                    return true;
-                }
-            };
-
-            // Smith as supervisor coordinates Brown and Jones
-            MatrixSupervisor smithSupervisor = AgenticServices
+            MatrixSupervisor supervisor = AgenticServices
                     .supervisorBuilder(MatrixSupervisor.class)
                     .chatModel(chatModel)
                     .subAgents(brownAgent, jonesAgent)
                     .responseStrategy(SupervisorResponseStrategy.SUMMARY)
-                    .listener(sseListener)
                     .build();
 
-            // Invoke the supervisor — Smith deploys Brown and Jones
-            String smithSummary = smithSupervisor.invoke(
-                    "Round " + round + ". Send Brown to fight Neo (" + brownOutcome + "). "
-                    + "Send Jones to fight Neo (" + jonesOutcome + "). "
-                    + "Keep all responses to ONE sentence each.");
+            String brownOutcome = brownWins ? "You WIN. One sentence." : "You LOSE. One sentence.";
+            String jonesOutcome = jonesWins ? "You WIN. One sentence." : "You LOSE. One sentence.";
 
-            log.info("Smith summary: {}", smithSummary != null ? smithSummary.substring(0, Math.min(100, smithSummary.length())) : "null");
+            String summary = supervisor.invoke(
+                    "Round " + round + ". Send Brown (" + brownOutcome + "), then Jones (" + jonesOutcome + "). One sentence each.");
 
-            // Now score based on random outcomes and send SSE events
-            // Brown's fight
-            if (brownWins) { agentsScore.incrementAndGet(); } else { neoScore.incrementAndGet(); }
-            String brownMsg = extractAgentSection(smithSummary, "Brown");
-            sendEvent(emitter, CombatEvent.of("Brown", brownWins ? "attack-win" : "attack",
-                    brownMsg.isEmpty() ? smithSummary : brownMsg,
-                    round, neoScore.get(), agentsScore.get()));
-
-            // Jones's fight
-            if (jonesWins) { agentsScore.incrementAndGet(); } else { neoScore.incrementAndGet(); }
-            String jonesMsg = extractAgentSection(smithSummary, "Jones");
-            sendEvent(emitter, CombatEvent.of("Jones", jonesWins ? "attack-win" : "attack",
-                    jonesMsg.isEmpty() ? "Jones engaged Neo in combat." : jonesMsg,
-                    round, neoScore.get(), agentsScore.get()));
-
-            // Smith's movie quote
-            String quote = SMITH_QUOTES[ThreadLocalRandom.current().nextInt(SMITH_QUOTES.length)];
-            sendEvent(emitter, CombatEvent.of("Smith", "supervise", quote,
-                    round, neoScore.get(), agentsScore.get()));
-
-            // Round result
-            String roundResult;
-            if (brownWins && jonesWins) {
-                roundResult = "The agents overwhelm Neo! Even The One can fall.";
-            } else if (brownWins || jonesWins) {
-                roundResult = "Split decision! Neo takes a hit but fights on.";
-            } else {
-                roundResult = "Neo defeats both agents. The One cannot be stopped.";
-            }
-            sendEvent(emitter, CombatEvent.of("Neo", "result", roundResult,
-                    round, neoScore.get(), agentsScore.get()));
+            emitRoundResults(emitter, round, brownWins, jonesWins,
+                    extractAgentSection(summary, "Brown"),
+                    extractAgentSection(summary, "Jones"), "supervisor");
 
             emitter.complete();
         } catch (Exception e) {
-            log.error("Combat error", e);
-            sendEvent(emitter, CombatEvent.of("System", "error",
-                    "Combat error: " + e.getMessage(),
-                    round, neoScore.get(), agentsScore.get()));
-            emitter.completeWithError(e);
+            emitError(emitter, round, e);
         }
     }
 
-    /** Try to extract the section about a specific agent from the summary. */
+    // ─── Pattern 2: Parallel (Fan-out) ───
+    public void runParallelRound(SseEmitter emitter) {
+        int round = currentRound.incrementAndGet();
+        try {
+            boolean brownWins = ThreadLocalRandom.current().nextInt(100) < 30;
+            boolean jonesWins = ThreadLocalRandom.current().nextInt(100) < 30;
+
+            String brownOutcome = brownWins ? "You WIN. One sentence." : "You LOSE. One sentence.";
+            String jonesOutcome = jonesWins ? "You WIN. One sentence." : "You LOSE. One sentence.";
+
+            AgentBrown brownAgent = AgenticServices.agentBuilder(AgentBrown.class)
+                    .chatModel(chatModel).outputKey("brownResult").build();
+            AgentJones jonesAgent = AgenticServices.agentBuilder(AgentJones.class)
+                    .chatModel(chatModel).outputKey("jonesResult").build();
+
+            // Parallel fan-out: both agents fight at the same time
+            UntypedAgent parallelFight = AgenticServices.parallelBuilder()
+                    .subAgents(brownAgent, jonesAgent)
+                    .build();
+
+            parallelFight.invoke(Map.of(
+                    "request", "Round " + round + ". " + brownOutcome + " " + jonesOutcome));
+
+            // Parallel returns via scope, extract from summary
+            String brownMsg = brownWins ? "Brown lands a crushing blow — Neo goes down!" : "Brown attacks but Neo dodges and counters.";
+            String jonesMsg = jonesWins ? "Jones strikes hard — Neo staggers and falls!" : "Jones lunges but Neo deflects with ease.";
+
+            emitRoundResults(emitter, round, brownWins, jonesWins, brownMsg, jonesMsg, "parallel");
+            emitter.complete();
+        } catch (Exception e) {
+            emitError(emitter, round, e);
+        }
+    }
+
+    // ─── Pattern 3: Loop (Auto-battle to 5 wins) ───
+    public void runAutoBattle(SseEmitter emitter) {
+        try {
+            sendEvent(emitter, CombatEvent.of("System", "system",
+                    "AUTO-BATTLE: First to 5 wins!", 0, neoScore.get(), agentsScore.get()));
+
+            while (neoScore.get() < 5 && agentsScore.get() < 5) {
+                int round = currentRound.incrementAndGet();
+                boolean brownWins = ThreadLocalRandom.current().nextInt(100) < 30;
+                boolean jonesWins = ThreadLocalRandom.current().nextInt(100) < 30;
+
+                String brownMsg = brownWins ? "Brown connects!" : "Brown misses — Neo counters.";
+                String jonesMsg = jonesWins ? "Jones lands the hit!" : "Jones swings wide — Neo strikes back.";
+
+                // Quick parallel calls via chatModel directly for speed
+                if (brownWins) { agentsScore.incrementAndGet(); } else { neoScore.incrementAndGet(); }
+                sendEvent(emitter, CombatEvent.of("Brown", brownWins ? "attack-win" : "attack",
+                        brownMsg, round, neoScore.get(), agentsScore.get()));
+
+                if (jonesWins) { agentsScore.incrementAndGet(); } else { neoScore.incrementAndGet(); }
+                sendEvent(emitter, CombatEvent.of("Jones", jonesWins ? "attack-win" : "attack",
+                        jonesMsg, round, neoScore.get(), agentsScore.get()));
+
+                String quote = SMITH_QUOTES[ThreadLocalRandom.current().nextInt(SMITH_QUOTES.length)];
+                sendEvent(emitter, CombatEvent.of("Smith", "supervise", quote,
+                        round, neoScore.get(), agentsScore.get()));
+
+                String roundResult = (brownWins && jonesWins) ? "Agents overwhelm Neo!"
+                        : (brownWins || jonesWins) ? "Split decision!"
+                        : "Neo defeats both agents.";
+                sendEvent(emitter, CombatEvent.of("Neo", "result", roundResult,
+                        round, neoScore.get(), agentsScore.get()));
+
+                // Check exit condition
+                if (neoScore.get() >= 5 || agentsScore.get() >= 5) break;
+
+                // Brief pause between auto-rounds
+                Thread.sleep(500);
+            }
+
+            String winner = neoScore.get() >= 5 ? "NEO WINS THE MATCH! The One prevails."
+                    : "THE AGENTS WIN! The Matrix is restored.";
+            sendEvent(emitter, CombatEvent.of("System", "system", winner,
+                    currentRound.get(), neoScore.get(), agentsScore.get()));
+
+            emitter.complete();
+        } catch (Exception e) {
+            emitError(emitter, currentRound.get(), e);
+        }
+    }
+
+    // ─── Shared helpers ───
+
+    private void emitRoundResults(SseEmitter emitter, int round,
+            boolean brownWins, boolean jonesWins,
+            String brownMsg, String jonesMsg, String mode) {
+
+        if (brownWins) { agentsScore.incrementAndGet(); } else { neoScore.incrementAndGet(); }
+        sendEvent(emitter, CombatEvent.of("Brown", brownWins ? "attack-win" : "attack",
+                brownMsg.isEmpty() ? (brownWins ? "Brown wins!" : "Brown defeated.") : brownMsg,
+                round, neoScore.get(), agentsScore.get()));
+
+        if (jonesWins) { agentsScore.incrementAndGet(); } else { neoScore.incrementAndGet(); }
+        sendEvent(emitter, CombatEvent.of("Jones", jonesWins ? "attack-win" : "attack",
+                jonesMsg.isEmpty() ? (jonesWins ? "Jones wins!" : "Jones defeated.") : jonesMsg,
+                round, neoScore.get(), agentsScore.get()));
+
+        String quote = SMITH_QUOTES[ThreadLocalRandom.current().nextInt(SMITH_QUOTES.length)];
+        sendEvent(emitter, CombatEvent.of("Smith", "supervise", quote,
+                round, neoScore.get(), agentsScore.get()));
+
+        String roundResult = (brownWins && jonesWins) ? "The agents overwhelm Neo!"
+                : (brownWins || jonesWins) ? "Split decision! Neo takes a hit."
+                : "Neo defeats both agents.";
+        sendEvent(emitter, CombatEvent.of("Neo", "result", roundResult,
+                round, neoScore.get(), agentsScore.get()));
+    }
+
+    private void emitError(SseEmitter emitter, int round, Exception e) {
+        log.error("Combat error", e);
+        sendEvent(emitter, CombatEvent.of("System", "error",
+                "Combat error: " + e.getMessage(), round, neoScore.get(), agentsScore.get()));
+        emitter.completeWithError(e);
+    }
+
     private String extractAgentSection(String summary, String agentName) {
         if (summary == null) return "";
-        // Simple heuristic: find sentences mentioning the agent
         StringBuilder sb = new StringBuilder();
         for (String sentence : summary.split("(?<=[.!?])\\s+")) {
             if (sentence.toLowerCase().contains(agentName.toLowerCase())) {

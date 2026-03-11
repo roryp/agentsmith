@@ -136,6 +136,33 @@
             box-shadow: 0 0 20px #ff4444;
         }
 
+        button.auto-btn {
+            border-color: #ffff00;
+            color: #ffff00;
+            text-shadow: 0 0 5px #ffff00;
+        }
+        button.auto-btn:hover {
+            background: #ffff00;
+            color: #0a0a0a;
+            box-shadow: 0 0 20px #ffff00;
+        }
+        button.parallel-btn {
+            border-color: #00ccff;
+            color: #00ccff;
+            text-shadow: 0 0 5px #00ccff;
+        }
+        button.parallel-btn:hover {
+            background: #00ccff;
+            color: #0a0a0a;
+            box-shadow: 0 0 20px #00ccff;
+        }
+        .mode-label {
+            font-size: 7px;
+            color: #555;
+            text-align: center;
+            margin-bottom: 2px;
+        }
+
         .status-text {
             text-align: center;
             font-size: 9px;
@@ -178,8 +205,22 @@
         <div class="status-text" id="status-text">Ready to fight</div>
 
         <div class="controls">
-            <button id="fight-btn" onclick="startFight()">⚔ FIGHT ⚔</button>
-            <button id="reset-btn" class="reset-btn" onclick="resetGame()">↺ RESET</button>
+            <div style="text-align:center">
+                <div class="mode-label">SUPERVISOR</div>
+                <button id="fight-btn" onclick="startFight('supervisor')">⚔ FIGHT ⚔</button>
+            </div>
+            <div style="text-align:center">
+                <div class="mode-label">PARALLEL</div>
+                <button id="parallel-btn" class="parallel-btn" onclick="startFight('parallel')">⚡ FAST ⚡</button>
+            </div>
+            <div style="text-align:center">
+                <div class="mode-label">AUTO-BATTLE</div>
+                <button id="auto-btn" class="auto-btn" onclick="startFight('auto')">🔄 AUTO 5</button>
+            </div>
+            <div style="text-align:center">
+                <div class="mode-label">&nbsp;</div>
+                <button id="reset-btn" class="reset-btn" onclick="resetGame()">↺ RESET</button>
+            </div>
         </div>
     </div>
 
@@ -463,13 +504,20 @@
     // ─── Combat Logic ───
     let fighting = false;
 
-    function startFight() {
+    function setButtonsDisabled(disabled) {
+        document.getElementById('fight-btn').disabled = disabled;
+        document.getElementById('parallel-btn').disabled = disabled;
+        document.getElementById('auto-btn').disabled = disabled;
+    }
+
+    function startFight(mode) {
         if (fighting) return;
         fighting = true;
-        document.getElementById('fight-btn').disabled = true;
-        document.getElementById('status-text').textContent = 'Agents engaging Neo...';
+        setButtonsDisabled(true);
+        const modeLabel = mode === 'auto' ? 'Auto-battle to 5...' : mode === 'parallel' ? 'Parallel attack...' : 'Supervisor deploying...';
+        document.getElementById('status-text').textContent = modeLabel;
 
-        const eventSource = new EventSource('/api/fight');
+        const eventSource = new EventSource('/api/fight/' + mode);
 
         eventSource.addEventListener('combat', (e) => {
             const data = JSON.parse(e.data);
@@ -493,7 +541,7 @@
         eventSource.onerror = () => {
             eventSource.close();
             fighting = false;
-            document.getElementById('fight-btn').disabled = false;
+            setButtonsDisabled(false);
             document.getElementById('status-text').textContent = 'Ready for next round';
             drawScene('idle');
         };

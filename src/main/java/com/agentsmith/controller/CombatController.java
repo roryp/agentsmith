@@ -1,7 +1,6 @@
 package com.agentsmith.controller;
 
 import com.agentsmith.service.CombatService;
-import dev.langchain4j.model.chat.ChatModel;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
@@ -15,36 +14,50 @@ import java.util.concurrent.Executors;
 public class CombatController {
 
     private final CombatService combatService;
-    private final ChatModel chatModel;
     private final ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
 
-    public CombatController(CombatService combatService, ChatModel chatModel) {
+    public CombatController(CombatService combatService) {
         this.combatService = combatService;
-        this.chatModel = chatModel;
     }
 
+    /** Pattern 5: Supervisor — Smith coordinates Brown and Jones */
+    @GetMapping(value = "/fight/supervisor", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter fightSupervisor() {
+        SseEmitter emitter = new SseEmitter(120_000L);
+        executor.submit(() -> combatService.runSupervisorRound(emitter));
+        return emitter;
+    }
+
+    /** Pattern 2: Parallel — Brown and Jones fight simultaneously */
+    @GetMapping(value = "/fight/parallel", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter fightParallel() {
+        SseEmitter emitter = new SseEmitter(120_000L);
+        executor.submit(() -> combatService.runParallelRound(emitter));
+        return emitter;
+    }
+
+    /** Pattern 3: Loop — Auto-battle to 5 wins */
+    @GetMapping(value = "/fight/auto", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter fightAuto() {
+        SseEmitter emitter = new SseEmitter(300_000L);
+        executor.submit(() -> combatService.runAutoBattle(emitter));
+        return emitter;
+    }
+
+    /** Default fight (backward compat) — uses supervisor */
     @GetMapping(value = "/fight", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter fight() {
-        SseEmitter emitter = new SseEmitter(120_000L); // 2 min timeout
-        executor.submit(() -> combatService.runCombatRound(emitter));
-        return emitter;
+        return fightSupervisor();
     }
 
     @PostMapping("/reset")
     public Map<String, Object> reset() {
         combatService.resetScores();
-        return Map.of(
-                "status", "reset",
-                "neoScore", 0,
-                "agentsScore", 0
-        );
+        return Map.of("status", "reset", "neoScore", 0, "agentsScore", 0);
     }
 
     @GetMapping("/scores")
     public Map<String, Object> scores() {
-        return Map.of(
-                "neoScore", combatService.getNeoScore(),
-                "agentsScore", combatService.getAgentsScore()
-        );
+        return Map.of("neoScore", combatService.getNeoScore(), "agentsScore", combatService.getAgentsScore());
     }
 }
