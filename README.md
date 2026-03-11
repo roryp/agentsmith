@@ -1,5 +1,7 @@
 # Agent Smith - Matrix Combat Arena
 
+<img src="./docs/gameplay.png" alt="Gameplay Screenshot" width="800"/>
+
 A multi-agent Matrix combat demo built with **Spring Boot 4**, **LangChain4j Agentic**, and **D3.js**.
 
 Agents Brown, Jones, and Smith fight Neo in pixel-art combat rounds — powered by GPT-5-nano on Azure AI Services, deployed to Azure Container Apps, using three LangChain4j agentic patterns (Sequential, Parallel, Loop).
