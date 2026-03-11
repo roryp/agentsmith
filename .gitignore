@@ -14,3 +14,4 @@ target/
 
 ### Azure ###
 .azure/
+.playwright-mcp/
