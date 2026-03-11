@@ -91,6 +91,8 @@
         .log-entry.smith { border-color: #00ff00; color: #00ff00; }
         .log-entry.neo { border-color: #00ffff; color: #00ffff; }
         .log-entry.system { border-color: #ffff00; color: #ffff00; }
+        .log-entry.win { background: rgba(255, 50, 50, 0.15); border-color: #ff4444 !important; }
+        .log-entry.neo-win { background: rgba(0, 255, 255, 0.15); }
         .log-entry .agent-tag {
             font-weight: bold;
             display: inline-block;
@@ -373,6 +375,12 @@
             animateAttack(brownG, positions.brown, positions.neo);
         } else if (state === 'jones-attack') {
             animateAttack(jonesG, positions.jones, positions.neo);
+        } else if (state === 'brown-wins') {
+            animateAttack(brownG, positions.brown, positions.neo);
+            animateDefeat(neoG, positions.neo);
+        } else if (state === 'jones-wins') {
+            animateAttack(jonesG, positions.jones, positions.neo);
+            animateDefeat(neoG, positions.neo);
         } else if (state === 'neo-wins') {
             animateVictory(neoG, positions.neo);
         }
@@ -427,6 +435,31 @@
         }
     }
 
+    function animateDefeat(charGroup, pos) {
+        // Neo gets knocked back and flashes red
+        charGroup.transition()
+            .duration(150)
+            .attr('transform', 'translate(20, 5)')
+            .transition().duration(100)
+            .attr('transform', 'translate(25, 0)')
+            .transition().duration(200)
+            .attr('transform', 'translate(0, 0)');
+
+        // Red hit sparks
+        for (let i = 0; i < 6; i++) {
+            svg.append('circle')
+                .attr('cx', pos.x + 16)
+                .attr('cy', pos.y + 20)
+                .attr('r', 3)
+                .attr('fill', '#ff4444')
+                .transition().duration(400).delay(i * 40)
+                .attr('cx', pos.x + 16 + (Math.random() - 0.5) * 60)
+                .attr('cy', pos.y + 20 + (Math.random() - 0.5) * 60)
+                .attr('opacity', 0)
+                .remove();
+        }
+    }
+
     // ─── Combat Logic ───
     let fighting = false;
 
@@ -444,12 +477,16 @@
             updateScores(data);
 
             // Animate based on event
-            if (data.agent === 'Brown') {
+            if (data.agent === 'Brown' && data.type === 'attack-win') {
+                drawScene('brown-wins');
+            } else if (data.agent === 'Brown') {
                 drawScene('brown-attack');
+            } else if (data.agent === 'Jones' && data.type === 'attack-win') {
+                drawScene('jones-wins');
             } else if (data.agent === 'Jones') {
                 drawScene('jones-attack');
             } else if (data.type === 'result') {
-                setTimeout(() => drawScene('neo-wins'), 500);
+                setTimeout(() => drawScene('idle'), 500);
             }
         });
 
@@ -465,9 +502,12 @@
     function addLogEntry(data) {
         const log = document.getElementById('combat-log');
         const agentClass = data.agent.toLowerCase();
+        const isWin = data.type === 'attack-win';
         const entry = document.createElement('div');
-        entry.className = `log-entry ${agentClass}`;
-        entry.innerHTML = `<span class="agent-tag">[${data.agent.toUpperCase()}]</span> ${data.message}`;
+        entry.className = `log-entry ${agentClass}${isWin ? ' win' : ''}`;
+        const prefix = isWin ? '💥 ' : '';
+        const suffix = isWin ? ' ⚡ AGENT WINS!' : '';
+        entry.innerHTML = `<span class="agent-tag">[${data.agent.toUpperCase()}]</span> ${prefix}${data.message}${suffix}`;
         log.appendChild(entry);
         log.scrollTop = log.scrollHeight;
     }
