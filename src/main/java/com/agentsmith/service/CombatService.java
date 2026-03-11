@@ -37,13 +37,20 @@ public class CombatService {
     public int getNeoScore() { return neoScore.get(); }
     public int getAgentsScore() { return agentsScore.get(); }
 
+    // Agent win chances: normal vs "The One" mode
+    private int brownChance(boolean theOne) { return theOne ? 15 : 60; }
+    private int jonesChance(boolean theOne) { return theOne ? 10 : 55; }
+    private int smithChance(boolean theOne) { return theOne ? 20 : 65; }
+
     // ─── Pattern 1: Sequential (Chain) — Brown → Jones → Smith one after another ───
-    public void runSequentialRound(SseEmitter emitter) {
+    public void runSequentialRound(SseEmitter emitter, boolean theOne) {
         int round = currentRound.incrementAndGet();
         try {
-            boolean brownWins = ThreadLocalRandom.current().nextInt(100) < 60;
-            boolean jonesWins = ThreadLocalRandom.current().nextInt(100) < 55;
-            boolean smithWins = ThreadLocalRandom.current().nextInt(100) < 65;
+            boolean brownWins = ThreadLocalRandom.current().nextInt(100) < brownChance(theOne);
+            boolean jonesWins = ThreadLocalRandom.current().nextInt(100) < jonesChance(theOne);
+            boolean smithWins = ThreadLocalRandom.current().nextInt(100) < smithChance(theOne);
+
+            if (theOne) sendProgress(emitter, "Neo is THE ONE. Agents don't stand a chance.", round);
 
             sendProgress(emitter, "Building agents via AgenticServices.agentBuilder()...", round);
             // Build all three agents via AgenticServices
@@ -92,12 +99,14 @@ public class CombatService {
     }
 
     // ─── Pattern 2: Parallel (Fan-out) — All three fight at the same time via AgenticServices ───
-    public void runParallelRound(SseEmitter emitter) {
+    public void runParallelRound(SseEmitter emitter, boolean theOne) {
         int round = currentRound.incrementAndGet();
         try {
-            boolean brownWins = ThreadLocalRandom.current().nextInt(100) < 60;
-            boolean jonesWins = ThreadLocalRandom.current().nextInt(100) < 55;
-            boolean smithWins = ThreadLocalRandom.current().nextInt(100) < 65;
+            boolean brownWins = ThreadLocalRandom.current().nextInt(100) < brownChance(theOne);
+            boolean jonesWins = ThreadLocalRandom.current().nextInt(100) < jonesChance(theOne);
+            boolean smithWins = ThreadLocalRandom.current().nextInt(100) < smithChance(theOne);
+
+            if (theOne) sendProgress(emitter, "Neo is THE ONE. Agents don't stand a chance.", round);
 
             sendProgress(emitter, "Building agents via AgenticServices.agentBuilder()...", round);
             // Build agents via AgenticServices
@@ -149,10 +158,12 @@ public class CombatService {
     }
 
     // ─── Pattern 3: Loop (Auto-battle to 5 round-wins) via AgenticServices agents ───
-    public void runAutoBattle(SseEmitter emitter) {
+    public void runAutoBattle(SseEmitter emitter, boolean theOne) {
         try {
             // Reset scores for a fresh auto-battle
             resetScores();
+
+            if (theOne) sendProgress(emitter, "Neo has realized he is THE ONE. Agent win chances drastically reduced.", 0);
 
             sendProgress(emitter, "Building agents via AgenticServices.agentBuilder()...", 0);
             // Build agents once, reuse across rounds
@@ -167,9 +178,9 @@ public class CombatService {
             while (neoScore.get() < 5 && agentsScore.get() < 5) {
                 int round = currentRound.incrementAndGet();
                 // Agent-favored: 3 agents vs 1 Neo, agents should win more often
-                boolean brownWins = ThreadLocalRandom.current().nextInt(100) < 60;
-                boolean jonesWins = ThreadLocalRandom.current().nextInt(100) < 55;
-                boolean smithWins = ThreadLocalRandom.current().nextInt(100) < 65;
+                boolean brownWins = ThreadLocalRandom.current().nextInt(100) < brownChance(theOne);
+                boolean jonesWins = ThreadLocalRandom.current().nextInt(100) < jonesChance(theOne);
+                boolean smithWins = ThreadLocalRandom.current().nextInt(100) < smithChance(theOne);
 
                 sendProgress(emitter, "Round " + round + ": Dispatching 3 parallel LLM calls...", round);
 

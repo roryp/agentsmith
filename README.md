@@ -128,7 +128,7 @@ Open **http://localhost:8080** in your browser.
 | **↺ RESET** | — | Resets scores to 0 |
 
 - Each round, all three agents fight Neo — whoever wins the **majority** (2 out of 3) wins the round
-- Agent win chances per sub-fight: Brown 50%, Jones 45%, Smith 55%
+- Agent win chances per sub-fight: Brown 60%, Jones 55%, Smith 65%
 - Auto-battle resets scores and loops until one side reaches 5 round-wins
 - Watch the combat log for **LLM-generated fight narratives** — every sub-fight is a real LLM call
 

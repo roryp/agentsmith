@@ -22,32 +22,32 @@ public class CombatController {
 
     /** Pattern 1: Sequential — Brown → Jones → Smith one after another */
     @GetMapping(value = "/fight/sequential", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public SseEmitter fightSequential() {
+    public SseEmitter fightSequential(@RequestParam(defaultValue = "false") boolean theOne) {
         SseEmitter emitter = new SseEmitter(120_000L);
-        executor.submit(() -> combatService.runSequentialRound(emitter));
+        executor.submit(() -> combatService.runSequentialRound(emitter, theOne));
         return emitter;
     }
 
     /** Pattern 2: Parallel — Brown and Jones fight simultaneously */
     @GetMapping(value = "/fight/parallel", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public SseEmitter fightParallel() {
+    public SseEmitter fightParallel(@RequestParam(defaultValue = "false") boolean theOne) {
         SseEmitter emitter = new SseEmitter(120_000L);
-        executor.submit(() -> combatService.runParallelRound(emitter));
+        executor.submit(() -> combatService.runParallelRound(emitter, theOne));
         return emitter;
     }
 
     /** Pattern 3: Loop — Auto-battle to 5 wins */
     @GetMapping(value = "/fight/auto", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public SseEmitter fightAuto() {
+    public SseEmitter fightAuto(@RequestParam(defaultValue = "false") boolean theOne) {
         SseEmitter emitter = new SseEmitter(300_000L);
-        executor.submit(() -> combatService.runAutoBattle(emitter));
+        executor.submit(() -> combatService.runAutoBattle(emitter, theOne));
         return emitter;
     }
 
     /** Default fight — uses sequential */
     @GetMapping(value = "/fight", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public SseEmitter fight() {
-        return fightSequential();
+    public SseEmitter fight(@RequestParam(defaultValue = "false") boolean theOne) {
+        return fightSequential(theOne);
     }
 
     @PostMapping("/reset")

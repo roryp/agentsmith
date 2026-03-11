@@ -206,6 +206,10 @@
         <div class="status-text" id="status-text">Ready to fight</div>
 
         <div class="controls">
+            <div style="text-align:center;display:flex;align-items:center;gap:6px">
+                <input type="checkbox" id="the-one-cb" style="width:14px;height:14px;accent-color:#00ffff;cursor:pointer">
+                <label for="the-one-cb" style="font-size:7px;color:#00ffff;cursor:pointer;text-shadow:0 0 5px #00ffff">NEO IS THE ONE</label>
+            </div>
             <div style="text-align:center">
                 <div class="mode-label">SEQUENTIAL</div>
                 <button id="fight-btn" onclick="startFight('sequential')">⚔ FIGHT ⚔</button>
@@ -507,7 +511,7 @@
         const modeLabel = mode === 'auto' ? 'Auto-battle to 5...' : mode === 'parallel' ? 'Parallel attack...' : 'Sequential attack...';
         document.getElementById('status-text').textContent = modeLabel;
 
-        const eventSource = new EventSource('/api/fight/' + mode);
+        const eventSource = new EventSource('/api/fight/' + mode + '?theOne=' + document.getElementById('the-one-cb').checked);
 
         eventSource.addEventListener('combat', (e) => {
             const data = JSON.parse(e.data);
