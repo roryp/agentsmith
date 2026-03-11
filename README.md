@@ -1,5 +1,7 @@
 # Agent Smith - Matrix Combat Arena
 
+<img src="./docs/gameplay.png" alt="Agent Smith Gameplay" width="800"/>
+
 A multi-agent Matrix combat demo built with **Spring Boot 4**, **LangChain4j Agentic**, and **D3.js**.
 
 Agent Smith (supervisor) coordinates Agents Brown and Jones to fight Neo in pixel-art combat rounds — powered by GPT-5-mini on Azure AI Services via the LangChain4j `supervisorBuilder` pattern.
