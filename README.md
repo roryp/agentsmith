@@ -2,7 +2,7 @@
 
 A multi-agent Matrix combat demo built with **Spring Boot 4**, **LangChain4j Agentic**, and **D3.js**.
 
-Agent Smith (supervisor) coordinates Agents Brown and Jones to fight Neo in pixel-art combat rounds — powered by GPT-5-nano on Azure AI Services using three LangChain4j agentic patterns.
+Agents Brown, Jones, and Smith fight Neo in pixel-art combat rounds — powered by GPT-5-nano on Azure AI Services, deployed to Azure Container Apps, using three LangChain4j agentic patterns (Sequential, Parallel, Loop).
 
 ## Architecture
 
@@ -14,18 +14,20 @@ Agent Smith (supervisor) coordinates Agents Brown and Jones to fight Neo in pixe
                        │
 ┌──────────────────────▼──────────────────────────┐
 │  Spring Boot 4 (CombatController + SSE)          │
+│  Azure Container Apps (2 CPU, 4GB RAM)           │
 └──────────────────────┬──────────────────────────┘
                        │
 ┌──────────────────────▼──────────────────────────┐
 │  LangChain4j Agentic Patterns                    │
+│  All agents built via AgenticServices.agentBuilder│
 │                                                  │
-│  ⚔ Supervisor: Smith plans, deploys Brown+Jones  │
-│  ⚡ Parallel:  Brown+Jones fight simultaneously  │
+│  ⚔ Sequential: Brown → Jones → Smith in order   │
+│  ⚡ Parallel:  All three fight simultaneously    │
 │  🔄 Loop:     Auto-battle until first to 5 wins  │
 │                                                  │
-│  Smith (SupervisorAgent)                         │
-│    ├── Brown (@Agent sub-agent)                  │
-│    └── Jones (@Agent sub-agent)                  │
+│  Brown (@Agent) ─┐                               │
+│  Jones (@Agent) ─┼── fight Neo                   │
+│  Smith (@Agent) ─┘                               │
 └──────────────────────┬──────────────────────────┘
                        │ DefaultAzureCredential
 ┌──────────────────────▼──────────────────────────┐
@@ -51,15 +53,19 @@ az login
 azd auth login
 ```
 
-### 2. Deploy the AI model
+### 2. Deploy to Azure
 
 ```bash
 azd up
 ```
 
-This provisions:
-- Azure AI Services account with **GPT-5-nano** deployment (100K TPM)
-- Lenient content filter (all thresholds at High)
+This provisions and deploys:
+- **Azure AI Services** with GPT-5-nano (100K TPM) + lenient content filter
+- **Azure Container Registry** for the Docker image
+- **Azure Container App** (2 CPU, 4GB RAM) with system-assigned managed identity
+- **RBAC**: Container App gets `Cognitive Services OpenAI User` role automatically
+
+The app URL is printed at the end — open it in your browser.
 
 ### 3. Grant yourself the OpenAI User role
 
@@ -138,6 +144,7 @@ Open **http://localhost:8080** in your browser.
 | AI Agents | LangChain4j 1.12.1 + langchain4j-agentic 1.12.1-beta21 |
 | Agent Patterns | Sequential, Parallel, Loop (`AgenticServices.agentBuilder()`) |
 | LLM | GPT-5-nano on Azure AI Services |
+| Hosting | Azure Container Apps (2 CPU, 4GB RAM) |
 | Auth | `DefaultAzureCredential` (Managed Identity / Entra ID) |
 | Frontend | D3.js v7, pixel art, SSE streaming |
 | Infra | Bicep + Azure Developer CLI (`azd`) |
@@ -164,10 +171,13 @@ src/main/resources/
 └── static/index.html                   # D3.js pixel combat frontend
 
 infra/
-├── main.bicep                          # AI Services + model deployment
+├── main.bicep                          # AI Services + ACR + Container App
 ├── main.parameters.json
+├── abbreviations.json
 └── modules/
-    └── ai-services.bicep               # AI account + GPT-5-nano + content filter
+    ├── ai-services.bicep               # AI account + GPT-5-nano + content filter
+    ├── acr.bicep                       # Azure Container Registry
+    └── container-app.bicep             # Container App + managed identity + RBAC
 ```
 
 ## Cleanup
