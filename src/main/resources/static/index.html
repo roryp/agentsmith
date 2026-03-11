@@ -416,11 +416,16 @@
             animateAttack(brownG, positions.brown, positions.neo);
         } else if (state === 'jones-attack') {
             animateAttack(jonesG, positions.jones, positions.neo);
+        } else if (state === 'smith-attack') {
+            animateAttack(smithG, positions.smith, positions.neo);
         } else if (state === 'brown-wins') {
             animateAttack(brownG, positions.brown, positions.neo);
             animateDefeat(neoG, positions.neo);
         } else if (state === 'jones-wins') {
             animateAttack(jonesG, positions.jones, positions.neo);
+            animateDefeat(neoG, positions.neo);
+        } else if (state === 'smith-wins') {
+            animateAttack(smithG, positions.smith, positions.neo);
             animateDefeat(neoG, positions.neo);
         } else if (state === 'neo-wins') {
             animateVictory(neoG, positions.neo);
@@ -514,7 +519,7 @@
         if (fighting) return;
         fighting = true;
         setButtonsDisabled(true);
-        const modeLabel = mode === 'auto' ? 'Auto-battle to 5...' : mode === 'parallel' ? 'Parallel attack...' : 'Supervisor deploying...';
+        const modeLabel = mode === 'auto' ? 'Auto-battle to 5...' : mode === 'parallel' ? 'Parallel attack...' : 'Sequential attack...';
         document.getElementById('status-text').textContent = modeLabel;
 
         const eventSource = new EventSource('/api/fight/' + mode);
@@ -533,6 +538,10 @@
                 drawScene('jones-wins');
             } else if (data.agent === 'Jones') {
                 drawScene('jones-attack');
+            } else if (data.agent === 'Smith' && data.type === 'attack-win') {
+                drawScene('smith-wins');
+            } else if (data.agent === 'Smith') {
+                drawScene('smith-attack');
             } else if (data.type === 'result') {
                 setTimeout(() => drawScene('idle'), 500);
             }
