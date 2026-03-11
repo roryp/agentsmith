@@ -4,7 +4,7 @@
 
 A multi-agent Matrix combat demo built with **Spring Boot 4**, **LangChain4j Agentic**, and **D3.js**.
 
-Agents Brown, Jones, and Smith fight Neo in pixel-art combat rounds — powered by GPT-5-nano on Azure AI Services, deployed to Azure Container Apps, using three LangChain4j agentic patterns (Sequential, Parallel, Loop).
+Agents Brown, Jones, and Smith fight Neo in pixel-art combat rounds — powered by GPT-5-nano on Azure AI Services, deployed to Azure Container Apps, using three LangChain4j agentic patterns (Sequential, Parallel, Loop). Toggle **"Neo is The One"** to flip the odds and watch Neo dominate.
 
 ## Architecture
 
@@ -120,16 +120,19 @@ Open **http://localhost:8080** in your browser.
 
 ## How to Play
 
-| Button | Pattern | What happens |
-|--------|---------|-------------|
+| Button / Control | Pattern | What happens |
+|-----------------|---------|-------------|
 | **⚔ FIGHT** | Sequential (#1) | Brown → Jones → Smith fight Neo one after another |
 | **⚡ FAST** | Parallel (#2) | All three agents fight Neo simultaneously |
 | **🔄 AUTO 5** | Loop (#3) | Auto-battles rounds until someone hits 5 wins |
 | **↺ RESET** | — | Resets scores to 0 |
+| **☑ NEO IS THE ONE** | Modifier | Makes Neo far stronger (agents drop to 15/10/20% win chance) |
 
 - Each round, all three agents fight Neo — whoever wins the **majority** (2 out of 3) wins the round
-- Agent win chances per sub-fight: Brown 60%, Jones 55%, Smith 65%
+- **Normal mode**: Agent win chances per sub-fight: Brown 60%, Jones 55%, Smith 65% (agents favored)
+- **"The One" mode**: Agent win chances drop to Brown 15%, Jones 10%, Smith 20% (Neo dominates)
 - Auto-battle resets scores and loops until one side reaches 5 round-wins
+- Real-time **progress logging** shows backend activity (agent init, LLM calls, response status)
 - Watch the combat log for **LLM-generated fight narratives** — every sub-fight is a real LLM call
 
 ## Scoring
