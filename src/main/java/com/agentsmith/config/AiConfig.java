@@ -24,7 +24,7 @@ public class AiConfig {
                 .tokenCredential(new DefaultAzureCredentialBuilder().build())
                 .deploymentName(deploymentName)
                 .httpClientProvider(new OkHttpAsyncClientProvider())
-                .maxCompletionTokens(2000)
+                .maxCompletionTokens(4000)
                 .build();
     }
 }

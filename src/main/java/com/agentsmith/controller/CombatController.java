@@ -23,7 +23,7 @@ public class CombatController {
     /** Pattern 5: Supervisor — Smith coordinates Brown and Jones */
     @GetMapping(value = "/fight/supervisor", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter fightSupervisor() {
-        SseEmitter emitter = new SseEmitter(120_000L);
+        SseEmitter emitter = new SseEmitter(300_000L);
         executor.submit(() -> combatService.runSupervisorRound(emitter));
         return emitter;
     }
@@ -44,10 +44,10 @@ public class CombatController {
         return emitter;
     }
 
-    /** Default fight (backward compat) — uses supervisor */
+    /** Default fight (backward compat) — uses parallel for speed */
     @GetMapping(value = "/fight", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter fight() {
-        return fightSupervisor();
+        return fightParallel();
     }
 
     @PostMapping("/reset")
