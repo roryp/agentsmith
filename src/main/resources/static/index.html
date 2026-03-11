@@ -91,6 +91,7 @@
         .log-entry.smith { border-color: #00ff00; color: #00ff00; }
         .log-entry.neo { border-color: #00ffff; color: #00ffff; }
         .log-entry.system { border-color: #ffff00; color: #ffff00; }
+        .log-entry.progress { border-color: #666; color: #777; font-style: italic; font-size: 7px; opacity: 0.8; }
         .log-entry.win { background: rgba(255, 50, 50, 0.15); border-color: #ff4444 !important; }
         .log-entry.neo-win { background: rgba(0, 255, 255, 0.15); }
         .log-entry .agent-tag {
@@ -513,6 +514,9 @@
             addLogEntry(data);
             updateScores(data);
 
+            // Skip animations for progress/system events
+            if (data.type === 'progress' || data.type === 'system') return;
+
             if (data.agent === 'Brown' && data.type === 'attack-win') {
                 playAnimation('brown-wins');
             } else if (data.agent === 'Brown') {
@@ -543,11 +547,18 @@
         const log = document.getElementById('combat-log');
         const agentClass = data.agent.toLowerCase();
         const isWin = data.type === 'attack-win';
+        const isProgress = data.type === 'progress';
         const entry = document.createElement('div');
-        entry.className = `log-entry ${agentClass}${isWin ? ' win' : ''}`;
-        const prefix = isWin ? '💥 ' : '';
-        const suffix = isWin ? ' ⚡ AGENT WINS!' : '';
-        entry.innerHTML = `<span class="agent-tag">[${data.agent.toUpperCase()}]</span> ${prefix}${data.message}${suffix}`;
+        entry.className = `log-entry ${isProgress ? 'progress' : agentClass}${isWin ? ' win' : ''}`;
+        if (isProgress) {
+            entry.innerHTML = `<span class="agent-tag">[LOG]</span> ⏳ ${data.message}`;
+            // Update status bar too
+            document.getElementById('status-text').textContent = data.message;
+        } else {
+            const prefix = isWin ? '💥 ' : '';
+            const suffix = isWin ? ' ⚡ AGENT WINS!' : '';
+            entry.innerHTML = `<span class="agent-tag">[${data.agent.toUpperCase()}]</span> ${prefix}${data.message}${suffix}`;
+        }
         log.appendChild(entry);
         log.scrollTop = log.scrollHeight;
     }
