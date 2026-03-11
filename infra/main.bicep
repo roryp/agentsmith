@@ -10,7 +10,7 @@ param environmentName string
 param location string
 
 @description('The model to deploy')
-param modelName string = 'gpt-5-mini'
+param modelName string = 'gpt-5-nano'
 
 @description('The model format')
 param modelFormat string = 'OpenAI'
