@@ -41,9 +41,9 @@ public class CombatService {
     public void runSequentialRound(SseEmitter emitter) {
         int round = currentRound.incrementAndGet();
         try {
-            boolean brownWins = ThreadLocalRandom.current().nextInt(100) < 50;
-            boolean jonesWins = ThreadLocalRandom.current().nextInt(100) < 45;
-            boolean smithWins = ThreadLocalRandom.current().nextInt(100) < 55;
+            boolean brownWins = ThreadLocalRandom.current().nextInt(100) < 60;
+            boolean jonesWins = ThreadLocalRandom.current().nextInt(100) < 55;
+            boolean smithWins = ThreadLocalRandom.current().nextInt(100) < 65;
 
             sendProgress(emitter, "Building agents via AgenticServices.agentBuilder()...", round);
             // Build all three agents via AgenticServices
@@ -95,9 +95,9 @@ public class CombatService {
     public void runParallelRound(SseEmitter emitter) {
         int round = currentRound.incrementAndGet();
         try {
-            boolean brownWins = ThreadLocalRandom.current().nextInt(100) < 50;
-            boolean jonesWins = ThreadLocalRandom.current().nextInt(100) < 45;
-            boolean smithWins = ThreadLocalRandom.current().nextInt(100) < 55;
+            boolean brownWins = ThreadLocalRandom.current().nextInt(100) < 60;
+            boolean jonesWins = ThreadLocalRandom.current().nextInt(100) < 55;
+            boolean smithWins = ThreadLocalRandom.current().nextInt(100) < 65;
 
             sendProgress(emitter, "Building agents via AgenticServices.agentBuilder()...", round);
             // Build agents via AgenticServices
@@ -166,10 +166,10 @@ public class CombatService {
 
             while (neoScore.get() < 5 && agentsScore.get() < 5) {
                 int round = currentRound.incrementAndGet();
-                // Balanced probabilities: ~50/50 per round when using majority scoring
-                boolean brownWins = ThreadLocalRandom.current().nextInt(100) < 50;
-                boolean jonesWins = ThreadLocalRandom.current().nextInt(100) < 45;
-                boolean smithWins = ThreadLocalRandom.current().nextInt(100) < 55;
+                // Agent-favored: 3 agents vs 1 Neo, agents should win more often
+                boolean brownWins = ThreadLocalRandom.current().nextInt(100) < 60;
+                boolean jonesWins = ThreadLocalRandom.current().nextInt(100) < 55;
+                boolean smithWins = ThreadLocalRandom.current().nextInt(100) < 65;
 
                 sendProgress(emitter, "Round " + round + ": Dispatching 3 parallel LLM calls...", round);
 
