@@ -317,6 +317,8 @@
     // ─── D3 Arena Setup ───
     const svg = d3.select('#arena-svg');
     let arenaWidth, arenaHeight, pixelSize;
+    let charGroups = {};
+    let positions = {};
 
     function setupArena() {
         const container = document.querySelector('.arena');
@@ -327,7 +329,7 @@
         svg.attr('viewBox', `0 0 ${arenaWidth} ${arenaHeight}`)
            .attr('preserveAspectRatio', 'xMidYMid meet');
 
-        drawScene('idle');
+        drawScene();
     }
 
     function drawPixelChar(group, charDef, x, y, scale) {
@@ -348,17 +350,8 @@
         });
     }
 
-    function drawScene(state) {
+    function drawScene() {
         svg.selectAll('*').remove();
-
-        const defs = svg.append('defs');
-
-        // Glow filter
-        const filter = defs.append('filter').attr('id', 'glow');
-        filter.append('feGaussianBlur').attr('stdDeviation', '3').attr('result', 'blur');
-        filter.append('feMerge').selectAll('feMergeNode')
-            .data(['blur', 'SourceGraphic']).enter()
-            .append('feMergeNode').attr('in', d => d);
 
         // Ground line
         svg.append('line')
@@ -371,64 +364,55 @@
         const charH = 8 * pixelSize * charScale;
         const groundY = arenaHeight * 0.75 - charH;
 
-        // Draw characters based on state
-        const brownG = svg.append('g').attr('class', 'char-brown');
-        const jonesG = svg.append('g').attr('class', 'char-jones');
-        const neoG = svg.append('g').attr('class', 'char-neo');
-        const smithG = svg.append('g').attr('class', 'char-smith');
-
-        const positions = {
+        positions = {
             brown: { x: arenaWidth * 0.15, y: groundY },
             jones: { x: arenaWidth * 0.30, y: groundY },
             neo:   { x: arenaWidth * 0.55, y: groundY },
             smith: { x: arenaWidth * 0.80, y: groundY },
         };
 
-        // Labels
+        charGroups = {
+            brown: svg.append('g').attr('class', 'char-brown'),
+            jones: svg.append('g').attr('class', 'char-jones'),
+            neo:   svg.append('g').attr('class', 'char-neo'),
+            smith: svg.append('g').attr('class', 'char-smith'),
+        };
+
         const labelStyle = { 'font-family': "'Press Start 2P', monospace", 'font-size': '8px' };
+        const chars = [
+            { key: 'brown', def: PIXEL_CHARS.brown, color: '#D2691E', label: 'BROWN' },
+            { key: 'jones', def: PIXEL_CHARS.jones, color: '#C0C0C0', label: 'JONES' },
+            { key: 'neo',   def: PIXEL_CHARS.neo,   color: '#00ffff', label: 'NEO' },
+            { key: 'smith', def: PIXEL_CHARS.smith, color: '#00ff00', label: 'SMITH' },
+        ];
+        chars.forEach(c => {
+            drawPixelChar(charGroups[c.key], c.def, positions[c.key].x, positions[c.key].y, charScale);
+            svg.append('text').attr('x', positions[c.key].x + 16).attr('y', positions[c.key].y - 10)
+               .attr('fill', c.color).attr('text-anchor', 'middle')
+               .style('font-family', labelStyle['font-family']).style('font-size', labelStyle['font-size'])
+               .text(c.label);
+        });
+    }
 
-        drawPixelChar(brownG, PIXEL_CHARS.brown, positions.brown.x, positions.brown.y, charScale);
-        svg.append('text').attr('x', positions.brown.x + 16).attr('y', positions.brown.y - 10)
-           .attr('fill', '#D2691E').attr('text-anchor', 'middle')
-           .style('font-family', labelStyle['font-family']).style('font-size', labelStyle['font-size'])
-           .text('BROWN');
-
-        drawPixelChar(jonesG, PIXEL_CHARS.jones, positions.jones.x, positions.jones.y, charScale);
-        svg.append('text').attr('x', positions.jones.x + 16).attr('y', positions.jones.y - 10)
-           .attr('fill', '#C0C0C0').attr('text-anchor', 'middle')
-           .style('font-family', labelStyle['font-family']).style('font-size', labelStyle['font-size'])
-           .text('JONES');
-
-        drawPixelChar(neoG, PIXEL_CHARS.neo, positions.neo.x, positions.neo.y, charScale);
-        svg.append('text').attr('x', positions.neo.x + 16).attr('y', positions.neo.y - 10)
-           .attr('fill', '#00ffff').attr('text-anchor', 'middle')
-           .style('font-family', labelStyle['font-family']).style('font-size', labelStyle['font-size'])
-           .text('NEO');
-
-        drawPixelChar(smithG, PIXEL_CHARS.smith, positions.smith.x, positions.smith.y, charScale);
-        svg.append('text').attr('x', positions.smith.x + 16).attr('y', positions.smith.y - 10)
-           .attr('fill', '#00ff00').attr('text-anchor', 'middle')
-           .style('font-family', labelStyle['font-family']).style('font-size', labelStyle['font-size'])
-           .text('SMITH');
-
-        // Animate based on state
+    /** Animate without redrawing — just move groups */
+    function playAnimation(state) {
         if (state === 'brown-attack') {
-            animateAttack(brownG, positions.brown, positions.neo);
+            animateAttack(charGroups.brown, positions.brown, positions.neo);
         } else if (state === 'jones-attack') {
-            animateAttack(jonesG, positions.jones, positions.neo);
+            animateAttack(charGroups.jones, positions.jones, positions.neo);
         } else if (state === 'smith-attack') {
-            animateAttack(smithG, positions.smith, positions.neo);
+            animateAttack(charGroups.smith, positions.smith, positions.neo);
         } else if (state === 'brown-wins') {
-            animateAttack(brownG, positions.brown, positions.neo);
-            animateDefeat(neoG, positions.neo);
+            animateAttack(charGroups.brown, positions.brown, positions.neo);
+            animateDefeat(charGroups.neo, positions.neo);
         } else if (state === 'jones-wins') {
-            animateAttack(jonesG, positions.jones, positions.neo);
-            animateDefeat(neoG, positions.neo);
+            animateAttack(charGroups.jones, positions.jones, positions.neo);
+            animateDefeat(charGroups.neo, positions.neo);
         } else if (state === 'smith-wins') {
-            animateAttack(smithG, positions.smith, positions.neo);
-            animateDefeat(neoG, positions.neo);
+            animateAttack(charGroups.smith, positions.smith, positions.neo);
+            animateDefeat(charGroups.neo, positions.neo);
         } else if (state === 'neo-wins') {
-            animateVictory(neoG, positions.neo);
+            animateVictory(charGroups.neo, positions.neo);
         }
     }
 
@@ -529,21 +513,20 @@
             addLogEntry(data);
             updateScores(data);
 
-            // Animate based on event
             if (data.agent === 'Brown' && data.type === 'attack-win') {
-                drawScene('brown-wins');
+                playAnimation('brown-wins');
             } else if (data.agent === 'Brown') {
-                drawScene('brown-attack');
+                playAnimation('brown-attack');
             } else if (data.agent === 'Jones' && data.type === 'attack-win') {
-                drawScene('jones-wins');
+                playAnimation('jones-wins');
             } else if (data.agent === 'Jones') {
-                drawScene('jones-attack');
+                playAnimation('jones-attack');
             } else if (data.agent === 'Smith' && data.type === 'attack-win') {
-                drawScene('smith-wins');
+                playAnimation('smith-wins');
             } else if (data.agent === 'Smith') {
-                drawScene('smith-attack');
+                playAnimation('smith-attack');
             } else if (data.type === 'result') {
-                setTimeout(() => drawScene('idle'), 500);
+                // no redraw needed, characters stay in place
             }
         });
 
@@ -552,7 +535,7 @@
             fighting = false;
             setButtonsDisabled(false);
             document.getElementById('status-text').textContent = 'Ready for next round';
-            drawScene('idle');
+            drawScene();
         };
     }
 
