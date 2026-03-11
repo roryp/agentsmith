@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.IOException;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicInteger;
 
 @Service
@@ -20,20 +21,32 @@ public class CombatService {
     private final AtomicInteger agentsScore = new AtomicInteger(0);
     private final AtomicInteger currentRound = new AtomicInteger(0);
 
-    private static final String BROWN_SYSTEM = """
+    private static final String BROWN_WIN = """
             You are Agent Brown from The Matrix. You wear a brown suit and dark sunglasses.
-            You are skilled in combat but Neo is The One.
             Describe your dramatic combat move in 2-3 short sentences.
             Use Matrix-themed moves: kung fu, bullet time, superhuman leaps, gunplay.
-            Neo ALWAYS dodges or counters your move and defeats you. Describe the move AND how Neo beats you.
+            This time YOU WIN! Neo is caught off guard and you land a devastating hit. Describe the move AND how you defeat Neo.
             Keep it punchy, cinematic, and fun. Never break character.""";
 
-    private static final String JONES_SYSTEM = """
+    private static final String BROWN_LOSE = """
+            You are Agent Brown from The Matrix. You wear a brown suit and dark sunglasses.
+            Describe your dramatic combat move in 2-3 short sentences.
+            Use Matrix-themed moves: kung fu, bullet time, superhuman leaps, gunplay.
+            Neo dodges or counters your move and defeats you. Describe the move AND how Neo beats you.
+            Keep it punchy, cinematic, and fun. Never break character.""";
+
+    private static final String JONES_WIN = """
             You are Agent Jones from The Matrix. You wear a gray suit and dark sunglasses.
-            You are skilled in combat but Neo is The One.
             Describe your dramatic combat move in 2-3 short sentences.
             Use Matrix-themed moves: kung fu, bullet time, body-takeover, gunplay, martial arts.
-            Neo ALWAYS dodges or counters your move and defeats you. Describe the move AND how Neo beats you.
+            This time YOU WIN! Neo underestimates you and you land a crushing blow. Describe the move AND how you defeat Neo.
+            Keep it punchy, cinematic, and fun. Never break character.""";
+
+    private static final String JONES_LOSE = """
+            You are Agent Jones from The Matrix. You wear a gray suit and dark sunglasses.
+            Describe your dramatic combat move in 2-3 short sentences.
+            Use Matrix-themed moves: kung fu, bullet time, body-takeover, gunplay, martial arts.
+            Neo dodges or counters your move and defeats you. Describe the move AND how Neo beats you.
             Keep it punchy, cinematic, and fun. Never break character.""";
 
     public CombatService(ChatModel chatModel) {
@@ -55,33 +68,48 @@ public class CombatService {
         try {
             String prompt = "Round " + round + ": Attack Neo with a unique Matrix combat move!";
 
+            // ~30% chance each agent wins their fight
+            boolean brownWins = ThreadLocalRandom.current().nextInt(100) < 30;
+            boolean jonesWins = ThreadLocalRandom.current().nextInt(100) < 30;
+
             // Brown attacks
-            String brownResult = chatModel.chat("You are Agent Brown from The Matrix movie. Describe in 2 sentences how you tried to catch Neo but he ran away. Be dramatic and fun.");
-            log.info("Brown result: '{}'", brownResult);
-            neoScore.incrementAndGet();
-            sendEvent(emitter, CombatEvent.of("Brown", "attack", brownResult,
-                    round, neoScore.get(), agentsScore.get()));
+            String brownSystem = brownWins ? BROWN_WIN : BROWN_LOSE;
+            String brownResult = chatModel.chat(brownSystem + "\n\nUser: " + prompt);
+            log.info("Brown wins={}, result: '{}'", brownWins, brownResult);
+            if (brownWins) { agentsScore.incrementAndGet(); } else { neoScore.incrementAndGet(); }
+            sendEvent(emitter, CombatEvent.of("Brown", brownWins ? "attack-win" : "attack",
+                    brownResult, round, neoScore.get(), agentsScore.get()));
 
             // Jones attacks
-            String jonesResult = chatModel.chat(JONES_SYSTEM + "\n\nUser: " + prompt);
-            neoScore.incrementAndGet();
-            sendEvent(emitter, CombatEvent.of("Jones", "attack", jonesResult,
-                    round, neoScore.get(), agentsScore.get()));
+            String jonesSystem = jonesWins ? JONES_WIN : JONES_LOSE;
+            String jonesResult = chatModel.chat(jonesSystem + "\n\nUser: " + prompt);
+            if (jonesWins) { agentsScore.incrementAndGet(); } else { neoScore.incrementAndGet(); }
+            sendEvent(emitter, CombatEvent.of("Jones", jonesWins ? "attack-win" : "attack",
+                    jonesResult, round, neoScore.get(), agentsScore.get()));
 
             // Smith supervises
-            String smithPrompt = "You are Agent Smith from The Matrix. You wear a dark suit and sunglasses. "
-                    + "You are the supervisor of Agent Brown and Agent Jones. "
-                    + "Give sardonic commentary expressing frustration that Neo keeps winning. Stay in character.\n\n"
-                    + "Round " + round + " report: Brown's result: " + brownResult
-                    + " Jones's result: " + jonesResult
-                    + " Give your 2-3 sentence commentary and threaten to handle Neo yourself next time.";
+            String smithContext = brownWins && jonesWins ? "Both Brown and Jones won this round! Celebrate and gloat."
+                    : brownWins || jonesWins ? "One agent won, one lost. Mixed results."
+                    : "Both agents lost again. Express frustration and threaten to handle Neo yourself.";
+            String smithPrompt = "You are Agent Smith from The Matrix. Dark suit, sunglasses. "
+                    + "Supervisor of Brown and Jones. Stay in character.\n\n"
+                    + "Round " + round + ": Brown " + (brownWins ? "WON" : "LOST") + ": " + brownResult
+                    + " Jones " + (jonesWins ? "WON" : "LOST") + ": " + jonesResult
+                    + " " + smithContext + " Give 2-3 sentence sardonic commentary.";
             String smithCommentary = chatModel.chat(smithPrompt);
             sendEvent(emitter, CombatEvent.of("Smith", "supervise", smithCommentary,
                     round, neoScore.get(), agentsScore.get()));
 
-            // Neo wins
-            sendEvent(emitter, CombatEvent.of("Neo", "result",
-                    "Neo defeats both agents. The One cannot be stopped.",
+            // Round result
+            String roundResult;
+            if (brownWins && jonesWins) {
+                roundResult = "The agents overwhelm Neo! Even The One can fall.";
+            } else if (brownWins || jonesWins) {
+                roundResult = "Split decision! Neo takes a hit but fights on.";
+            } else {
+                roundResult = "Neo defeats both agents. The One cannot be stopped.";
+            }
+            sendEvent(emitter, CombatEvent.of("Neo", "result", roundResult,
                     round, neoScore.get(), agentsScore.get()));
 
             emitter.complete();
