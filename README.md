@@ -114,14 +114,14 @@ Open **http://localhost:8080** in your browser.
 
 | Button | Pattern | What happens |
 |--------|---------|-------------|
-| **⚔ FIGHT** | Supervisor (#5) | Smith coordinates — plans, deploys Brown then Jones via LLM |
-| **⚡ FAST** | Parallel (#2) | Brown and Jones fight Neo simultaneously — faster |
+| **⚔ FIGHT** | Sequential (#1) | Brown → Jones → Smith fight Neo one after another |
+| **⚡ FAST** | Parallel (#2) | All three agents fight Neo simultaneously |
 | **🔄 AUTO 5** | Loop (#3) | Auto-battles rounds until someone hits 5 wins |
 | **↺ RESET** | — | Resets scores to 0 |
 
-- Each fight has a **~30% chance the agent wins** — Neo can lose!
-- Agent Smith delivers a random movie quote each round
-- Watch the combat log for fight results and Smith's commentary
+- Each fight has a **~30% chance** the agent wins (~40% for Smith)
+- All agents are built via `AgenticServices.agentBuilder()` with `@Agent` interfaces
+- Watch the combat log for LLM-generated fight narratives
 
 ## Scoring
 
@@ -136,7 +136,7 @@ Open **http://localhost:8080** in your browser.
 |-----------|-----------|
 | Backend | Spring Boot 4.0.3, Java 21 |
 | AI Agents | LangChain4j 1.12.1 + langchain4j-agentic 1.12.1-beta21 |
-| Agent Patterns | Supervisor, Parallel, Loop (`AgenticServices`) |
+| Agent Patterns | Sequential, Parallel, Loop (`AgenticServices.agentBuilder()`) |
 | LLM | GPT-5-nano on Azure AI Services |
 | Auth | `DefaultAzureCredential` (Managed Identity / Entra ID) |
 | Frontend | D3.js v7, pixel art, SSE streaming |
@@ -148,16 +148,16 @@ Open **http://localhost:8080** in your browser.
 src/main/java/com/agentsmith/
 ├── AgentSmithApplication.java          # Spring Boot entry point
 ├── agents/
-│   ├── AgentBrown.java                 # @Agent sub-agent (Brown)
-│   ├── AgentJones.java                 # @Agent sub-agent (Jones)
-│   └── MatrixSupervisor.java           # Supervisor interface (Smith)
+│   ├── AgentBrown.java                 # @Agent (Brown)
+│   ├── AgentJones.java                 # @Agent (Jones)
+│   └── AgentSmith.java                 # @Agent (Smith — fights Neo himself)
 ├── config/
 │   └── AiConfig.java                   # ChatModel bean (Azure + DefaultAzureCredential)
 ├── controller/
 │   └── CombatController.java           # SSE endpoints: /api/fight/{mode}
 └── service/
     ├── CombatEvent.java                # SSE event record
-    └── CombatService.java              # 3 patterns: supervisor, parallel, auto-battle
+    └── CombatService.java              # 3 patterns: sequential, parallel, auto-battle
 
 src/main/resources/
 ├── application.properties
