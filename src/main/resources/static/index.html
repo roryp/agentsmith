@@ -663,10 +663,20 @@
         pendingAnimTimers.forEach(t => clearTimeout(t));
         pendingAnimTimers = [];
         drawScene();
-        const modeLabel = mode === 'auto' ? 'Auto-battle to 5...' : mode === 'parallel' ? 'Parallel attack...' : 'Sequential attack...';
-        document.getElementById('status-text').textContent = modeLabel;
 
-        const eventSource = new EventSource('/api/fight/' + mode + '?theOne=' + document.getElementById('the-one-cb').checked);
+        if (mode === 'auto') {
+            startAutoBattle();
+            return;
+        }
+
+        const modeLabel = mode === 'parallel' ? 'Parallel attack...' : 'Sequential attack...';
+        document.getElementById('status-text').textContent = modeLabel;
+        runSingleRound(mode);
+    }
+
+    function runSingleRound(mode) {
+        const theOne = document.getElementById('the-one-cb').checked;
+        const eventSource = new EventSource('/api/fight/' + mode + '?theOne=' + theOne);
 
         eventSource.addEventListener('combat', (e) => {
             const data = JSON.parse(e.data);
@@ -713,6 +723,79 @@
             fighting = false;
             setButtonsDisabled(false);
             document.getElementById('status-text').textContent = 'Ready for next round';
+        };
+
+        return eventSource;
+    }
+
+    function startAutoBattle() {
+        document.getElementById('status-text').textContent = 'Auto-battle to 5...';
+        // Reset scores for a fresh auto-battle
+        fetch('/api/reset', { method: 'POST' }).then(() => {
+            document.getElementById('neo-score').textContent = '0';
+            document.getElementById('agents-score').textContent = '0';
+            document.getElementById('round-display').textContent = 'ROUND 0';
+            addLogEntry({ agent: 'System', type: 'system', message: 'AUTO-BATTLE: First to 5 round wins!', neoScore: 0, agentsScore: 0, round: 0 });
+            runAutoRound();
+        });
+    }
+
+    function runAutoRound() {
+        // Read checkbox fresh each round
+        const theOne = document.getElementById('the-one-cb').checked;
+        document.getElementById('status-text').textContent = theOne ? 'Auto-battle (THE ONE)...' : 'Auto-battle...';
+        const eventSource = new EventSource('/api/fight/parallel?theOne=' + theOne);
+        let lastData = null;
+
+        eventSource.addEventListener('combat', (e) => {
+            const data = JSON.parse(e.data);
+            lastData = data;
+            addLogEntry(data);
+            updateScores(data);
+            if (data.type === 'progress' || data.type === 'system') return;
+
+            if (data.type === 'attack-win') {
+                updateCharExpression('brown', 'win');
+                updateCharExpression('jones', 'win');
+                updateCharExpression('smith', 'win');
+                updateCharExpression('neo', 'lose');
+            } else if (data.type === 'attack') {
+                updateCharExpression('brown', 'lose');
+                updateCharExpression('jones', 'lose');
+                updateCharExpression('smith', 'lose');
+                updateCharExpression('neo', 'win');
+            }
+
+            if (data.agent === 'Brown' && data.type === 'attack-win') playAnimation('brown-wins');
+            else if (data.agent === 'Brown') playAnimation('brown-attack');
+            else if (data.agent === 'Jones' && data.type === 'attack-win') playAnimation('jones-wins');
+            else if (data.agent === 'Jones') playAnimation('jones-attack');
+            else if (data.agent === 'Smith' && data.type === 'attack-win') playAnimation('smith-wins');
+            else if (data.agent === 'Smith') playAnimation('smith-attack');
+        });
+
+        eventSource.onerror = () => {
+            eventSource.close();
+            if (lastData && (lastData.neoScore >= 5 || lastData.agentsScore >= 5)) {
+                // Battle over — set faces to reflect the overall winner
+                const neoWon = lastData.neoScore >= 5;
+                const winner = neoWon ? 'NEO WINS THE BATTLE!' : 'AGENTS WIN THE BATTLE!';
+                updateCharExpression('brown', neoWon ? 'lose' : 'win');
+                updateCharExpression('jones', neoWon ? 'lose' : 'win');
+                updateCharExpression('smith', neoWon ? 'lose' : 'win');
+                updateCharExpression('neo', neoWon ? 'win' : 'lose');
+                addLogEntry({ agent: 'System', type: 'system', message: winner, neoScore: lastData.neoScore, agentsScore: lastData.agentsScore, round: lastData.round });
+                fighting = false;
+                setButtonsDisabled(false);
+                document.getElementById('status-text').textContent = winner;
+            } else {
+                // More rounds to go — fire next round after a brief pause
+                setTimeout(() => {
+                    charExpressions = { neo: 'normal', brown: 'normal', jones: 'normal', smith: 'normal' };
+                    drawScene();
+                    runAutoRound();
+                }, 500);
+            }
         };
     }
 
