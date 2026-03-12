@@ -191,6 +191,7 @@ infra/
 ├── main.bicep                          # AI Services + ACR + Container App
 ├── main.parameters.json
 ├── abbreviations.json
+├── lenient-filter.json                 # Content filter policy (all thresholds: High)
 └── modules/
     ├── ai-services.bicep               # AI account + GPT-5-nano + content filter
     ├── acr.bicep                       # Azure Container Registry
