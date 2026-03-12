@@ -62,7 +62,7 @@ azd up
 ```
 
 This provisions and deploys:
-- **Azure AI Services** with GPT-5-nano (100K TPM) + lenient content filter
+- **Azure AI Services** with GPT-5-nano (100K TPM) + lenient content filter (required because the LLM generates combat narrations that would otherwise be blocked by the default violence filter)
 - **Azure Container Registry** for the Docker image
 - **Azure Container App** (2 CPU, 4GB RAM) with system-assigned managed identity
 - **RBAC**: Container App gets `Cognitive Services OpenAI User` role automatically
