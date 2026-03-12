@@ -488,6 +488,8 @@
     function updateCharExpression(key, expression) {
         charExpressions[key] = expression;
         if (charGroups[key]) {
+            charGroups[key].interrupt();
+            charGroups[key].selectAll('*').interrupt();
             charGroups[key].selectAll('*').remove();
             const charScale = 1.2;
             const charDef = PIXEL_CHARS[key];
@@ -496,6 +498,7 @@
     }
 
     function drawScene() {
+        svg.selectAll('*').interrupt();
         svg.selectAll('*').remove();
 
         // Ground line
@@ -506,7 +509,7 @@
             .attr('opacity', 0.3);
 
         const charScale = 1.2;
-        const charH = 8 * pixelSize * charScale;
+        const charH = 12 * pixelSize * charScale;
         const groundY = arenaHeight * 0.75 - charH;
 
         positions = {
@@ -563,7 +566,10 @@
         }
     }
 
+    let pendingAnimTimers = [];
+
     function animateAttack(charGroup, from, to) {
+        charGroup.interrupt();
         charGroup.transition()
             .duration(300)
             .attr('transform', `translate(${(to.x - from.x) * 0.4}, 0)`)
@@ -572,7 +578,7 @@
             .attr('transform', 'translate(0, 0)');
 
         // Impact flash
-        setTimeout(() => {
+        const timer = setTimeout(() => {
             svg.append('circle')
                 .attr('cx', (from.x + to.x) / 2 + 16)
                 .attr('cy', to.y + 20)
@@ -584,9 +590,11 @@
                 .attr('opacity', 0)
                 .remove();
         }, 300);
+        pendingAnimTimers.push(timer);
     }
 
     function animateVictory(charGroup, pos) {
+        charGroup.interrupt();
         charGroup.transition()
             .duration(200)
             .attr('transform', 'translate(0, -15)')
@@ -614,6 +622,7 @@
 
     function animateDefeat(charGroup, pos) {
         // Neo gets knocked back and flashes red
+        charGroup.interrupt();
         charGroup.transition()
             .duration(150)
             .attr('transform', 'translate(20, 5)')
@@ -651,6 +660,8 @@
         fighting = true;
         setButtonsDisabled(true);
         charExpressions = { neo: 'normal', brown: 'normal', jones: 'normal', smith: 'normal' };
+        pendingAnimTimers.forEach(t => clearTimeout(t));
+        pendingAnimTimers = [];
         drawScene();
         const modeLabel = mode === 'auto' ? 'Auto-battle to 5...' : mode === 'parallel' ? 'Parallel attack...' : 'Sequential attack...';
         document.getElementById('status-text').textContent = modeLabel;
@@ -740,6 +751,8 @@
         document.getElementById('combat-log').innerHTML =
             '<div class="log-entry system"><span class="agent-tag">[SYSTEM]</span> Combat arena reset. Agents reloaded.</div>';
         document.getElementById('status-text').textContent = 'Ready to fight';
+        pendingAnimTimers.forEach(t => clearTimeout(t));
+        pendingAnimTimers = [];
         charExpressions = { neo: 'normal', brown: 'normal', jones: 'normal', smith: 'normal' };
         drawScene();
     }
