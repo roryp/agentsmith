@@ -259,65 +259,195 @@
     })();
 
     // ─── Pixel Character Definitions ───
-    // Each character is an 8x8 pixel grid
+    // Each character is an 8x8 pixel grid with normal/win/lose faces
     const PIXEL_CHARS = {
         neo: {
-            color: '#00ffff',
-            glow: '#00ffff',
-            pixels: [
-                '..XXXX..',
-                '.X....X.',
-                '.X.XX.X.',
-                '.X....X.',
-                '..XXXX..',
-                '.XXXXXX.',
-                'X.XXXX.X',
-                '..X..X..',
+            color: '#ffffff',
+            glow: '#aaaaff',
+            normal: [
+                '..XXXXXX..',
+                '.X......X.',
+                'X........X',
+                'X..XX..X.X',
+                'X........X',
+                'X........X',
+                'X..XXXX..X',
+                '.X......X.',
+                '..XXXXXX..',
+                '...XXXX...',
+                '..XXXXXX..',
+                '...X..X...',
+            ],
+            win: [
+                '..XXXXXX..',
+                '.X......X.',
+                'X........X',
+                'X........X',
+                'X.XX..XX.X',
+                'X........X',
+                'X..X..X..X',
+                '.X..XX..X.',
+                '..XXXXXX..',
+                '...XXXX...',
+                '..XXXXXX..',
+                '...X..X...',
+            ],
+            lose: [
+                '..XXXXXX..',
+                '.X......X.',
+                'X..XX..X.X',
+                'X..XX..X.X',
+                'X........X',
+                'X...XX...X',
+                'X..X..X..X',
+                '.X......X.',
+                '..XXXXXX..',
+                '...XXXX...',
+                '....XX....',
+                '...X..X...',
             ]
         },
         brown: {
             color: '#D2691E',
             glow: '#8B4513',
-            pixels: [
-                '..XXXX..',
-                '.X....X.',
-                '.X.XX.X.',
-                '.X....X.',
-                '..XXXX..',
-                '.XXXXXX.',
-                'X.XXXX.X',
-                '..X..X..',
+            normal: [
+                '..XXXXXX..',
+                '.X......X.',
+                'X........X',
+                'X..XX..X.X',
+                'X........X',
+                'X........X',
+                'X..XXXX..X',
+                '.X......X.',
+                '..XXXXXX..',
+                '...XXXX...',
+                '..XXXXXX..',
+                '...X..X...',
+            ],
+            win: [
+                '..XXXXXX..',
+                '.X......X.',
+                'X........X',
+                'X........X',
+                'X.XX..XX.X',
+                'X........X',
+                'X..X..X..X',
+                '.X..XX..X.',
+                '..XXXXXX..',
+                '...XXXX...',
+                '..XXXXXX..',
+                '...X..X...',
+            ],
+            lose: [
+                '..XXXXXX..',
+                '.X......X.',
+                'X..XX..X.X',
+                'X..XX..X.X',
+                'X........X',
+                'X...XX...X',
+                'X..X..X..X',
+                '.X......X.',
+                '..XXXXXX..',
+                '...XXXX...',
+                '....XX....',
+                '...X..X...',
             ]
         },
         jones: {
             color: '#C0C0C0',
             glow: '#808080',
-            pixels: [
-                '..XXXX..',
-                '.X....X.',
-                '.X.XX.X.',
-                '.X....X.',
-                '..XXXX..',
-                '.XXXXXX.',
-                'X.XXXX.X',
-                '..X..X..',
+            normal: [
+                '..XXXXXX..',
+                '.X......X.',
+                'X........X',
+                'X..XX..X.X',
+                'X........X',
+                'X........X',
+                'X..XXXX..X',
+                '.X......X.',
+                '..XXXXXX..',
+                '...XXXX...',
+                '..XXXXXX..',
+                '...X..X...',
+            ],
+            win: [
+                '..XXXXXX..',
+                '.X......X.',
+                'X........X',
+                'X........X',
+                'X.XX..XX.X',
+                'X........X',
+                'X..X..X..X',
+                '.X..XX..X.',
+                '..XXXXXX..',
+                '...XXXX...',
+                '..XXXXXX..',
+                '...X..X...',
+            ],
+            lose: [
+                '..XXXXXX..',
+                '.X......X.',
+                'X..XX..X.X',
+                'X..XX..X.X',
+                'X........X',
+                'X...XX...X',
+                'X..X..X..X',
+                '.X......X.',
+                '..XXXXXX..',
+                '...XXXX...',
+                '....XX....',
+                '...X..X...',
             ]
         },
         smith: {
             color: '#00ff00',
             glow: '#00ff00',
-            pixels: [
-                '..XXXX..',
-                '.XXXXXX.',
-                '.X.XX.X.',
-                '.X....X.',
-                '..XXXX..',
-                '.XXXXXX.',
-                'X.XXXX.X',
-                '..X..X..',
+            normal: [
+                '..XXXXXX..',
+                '.XXXXXXXX.',
+                'X........X',
+                'X..XX..X.X',
+                'X........X',
+                'X........X',
+                'X..XXXX..X',
+                '.X......X.',
+                '..XXXXXX..',
+                '...XXXX...',
+                '..XXXXXX..',
+                '...X..X...',
+            ],
+            win: [
+                '..XXXXXX..',
+                '.XXXXXXXX.',
+                'X........X',
+                'X........X',
+                'X.XX..XX.X',
+                'X........X',
+                'X..X..X..X',
+                '.X..XX..X.',
+                '..XXXXXX..',
+                '...XXXX...',
+                '..XXXXXX..',
+                '...X..X...',
+            ],
+            lose: [
+                '..XXXXXX..',
+                '.XXXXXXXX.',
+                'X..XX..X.X',
+                'X..XX..X.X',
+                'X........X',
+                'X...XX...X',
+                'X..X..X..X',
+                '.X......X.',
+                '..XXXXXX..',
+                '...XXXX...',
+                '....XX....',
+                '...X..X...',
             ]
         }
     };
+
+    let charExpressions = { neo: 'normal', brown: 'normal', jones: 'normal', smith: 'normal' };
 
     // ─── D3 Arena Setup ───
     const svg = d3.select('#arena-svg');
@@ -337,9 +467,9 @@
         drawScene();
     }
 
-    function drawPixelChar(group, charDef, x, y, scale) {
+    function drawPixelChar(group, pixels, color, glow, x, y, scale) {
         const s = pixelSize * scale;
-        charDef.pixels.forEach((row, ry) => {
+        pixels.forEach((row, ry) => {
             [...row].forEach((ch, rx) => {
                 if (ch === 'X') {
                     group.append('rect')
@@ -347,12 +477,22 @@
                         .attr('y', y + ry * s)
                         .attr('width', s)
                         .attr('height', s)
-                        .attr('fill', charDef.color)
+                        .attr('fill', color)
                         .attr('opacity', 0.9)
-                        .style('filter', `drop-shadow(0 0 ${s}px ${charDef.glow})`);
+                        .style('filter', `drop-shadow(0 0 ${s}px ${glow})`);
                 }
             });
         });
+    }
+
+    function updateCharExpression(key, expression) {
+        charExpressions[key] = expression;
+        if (charGroups[key]) {
+            charGroups[key].selectAll('*').remove();
+            const charScale = 1.2;
+            const charDef = PIXEL_CHARS[key];
+            drawPixelChar(charGroups[key], charDef[expression], charDef.color, charDef.glow, positions[key].x, positions[key].y, charScale);
+        }
     }
 
     function drawScene() {
@@ -385,13 +525,15 @@
 
         const labelStyle = { 'font-family': "'Press Start 2P', monospace", 'font-size': '8px' };
         const chars = [
-            { key: 'brown', def: PIXEL_CHARS.brown, color: '#D2691E', label: 'BROWN' },
-            { key: 'jones', def: PIXEL_CHARS.jones, color: '#C0C0C0', label: 'JONES' },
-            { key: 'neo',   def: PIXEL_CHARS.neo,   color: '#00ffff', label: 'NEO' },
-            { key: 'smith', def: PIXEL_CHARS.smith, color: '#00ff00', label: 'SMITH' },
+            { key: 'brown', color: '#D2691E', label: 'BROWN' },
+            { key: 'jones', color: '#C0C0C0', label: 'JONES' },
+            { key: 'neo',   color: '#ffffff', label: 'NEO' },
+            { key: 'smith', color: '#00ff00', label: 'SMITH' },
         ];
         chars.forEach(c => {
-            drawPixelChar(charGroups[c.key], c.def, positions[c.key].x, positions[c.key].y, charScale);
+            const charDef = PIXEL_CHARS[c.key];
+            const expression = charExpressions[c.key] || 'normal';
+            drawPixelChar(charGroups[c.key], charDef[expression], charDef.color, charDef.glow, positions[c.key].x, positions[c.key].y, charScale);
             svg.append('text').attr('x', positions[c.key].x + 16).attr('y', positions[c.key].y - 10)
                .attr('fill', c.color).attr('text-anchor', 'middle')
                .style('font-family', labelStyle['font-family']).style('font-size', labelStyle['font-size'])
@@ -508,6 +650,8 @@
         if (fighting) return;
         fighting = true;
         setButtonsDisabled(true);
+        charExpressions = { neo: 'normal', brown: 'normal', jones: 'normal', smith: 'normal' };
+        drawScene();
         const modeLabel = mode === 'auto' ? 'Auto-battle to 5...' : mode === 'parallel' ? 'Parallel attack...' : 'Sequential attack...';
         document.getElementById('status-text').textContent = modeLabel;
 
@@ -520,6 +664,21 @@
 
             // Skip animations for progress/system events
             if (data.type === 'progress' || data.type === 'system') return;
+
+            const agentKey = data.agent.toLowerCase();
+
+            // Update pixel face expressions — agents are a team
+            if (data.type === 'attack-win') {
+                updateCharExpression('brown', 'win');
+                updateCharExpression('jones', 'win');
+                updateCharExpression('smith', 'win');
+                updateCharExpression('neo', 'lose');
+            } else if (data.type === 'attack') {
+                updateCharExpression('brown', 'lose');
+                updateCharExpression('jones', 'lose');
+                updateCharExpression('smith', 'lose');
+                updateCharExpression('neo', 'win');
+            }
 
             if (data.agent === 'Brown' && data.type === 'attack-win') {
                 playAnimation('brown-wins');
@@ -543,7 +702,6 @@
             fighting = false;
             setButtonsDisabled(false);
             document.getElementById('status-text').textContent = 'Ready for next round';
-            drawScene();
         };
     }
 
@@ -582,6 +740,7 @@
         document.getElementById('combat-log').innerHTML =
             '<div class="log-entry system"><span class="agent-tag">[SYSTEM]</span> Combat arena reset. Agents reloaded.</div>';
         document.getElementById('status-text').textContent = 'Ready to fight';
+        charExpressions = { neo: 'normal', brown: 'normal', jones: 'normal', smith: 'normal' };
         drawScene();
     }
 
