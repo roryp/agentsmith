@@ -128,10 +128,11 @@ Open **http://localhost:8080** in your browser.
 | **↺ RESET** | — | Resets scores to 0 |
 | **☑ NEO IS THE ONE** | Modifier | Makes Neo far stronger (agents drop to 15/10/20% win chance) |
 
-- Each round, all three agents fight Neo — whoever wins the **majority** (2 out of 3) wins the round
+- Each round, all three agents fight Neo — the round summary shows the breakdown (e.g. *"Neo wins 2 of 3, Agents win 1 of 3"*)
+- **Sequential / Parallel**: Each sub-fight awards 1 point to the winner independently
+- **Auto-battle**: Majority of 3 sub-fights wins the round (1 point). First to 5 round-wins.
 - **Normal mode**: Agent win chances per sub-fight: Brown 60%, Jones 55%, Smith 65% (agents favored)
 - **"The One" mode**: Agent win chances drop to Brown 15%, Jones 10%, Smith 20% (Neo dominates)
-- Auto-battle resets scores and loops until one side reaches 5 round-wins
 - Real-time **progress logging** shows backend activity (agent init, LLM calls, response status)
 - Watch the combat log for **LLM-generated fight narratives** — every sub-fight is a real LLM call
 
