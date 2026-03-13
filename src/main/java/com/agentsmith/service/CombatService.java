@@ -85,10 +85,10 @@ public class CombatService {
 
             // Round result
             int agentWins = (brownWins ? 1 : 0) + (jonesWins ? 1 : 0) + (smithWins ? 1 : 0);
-            String roundResult = agentWins == 3 ? "All three agents overwhelm Neo!"
-                    : agentWins >= 2 ? "Agents dominate! Neo is losing ground."
-                    : agentWins == 1 ? "Split round. Neo holds the line."
-                    : "Neo defeats all three. The One cannot be stopped.";
+            int neoWins = 3 - agentWins;
+            String roundResult = agentWins == 3 ? "Agents win all 3 fights! Neo is overwhelmed."
+                    : agentWins == 0 ? "Neo wins all 3 fights! The One cannot be stopped."
+                    : "Neo wins " + neoWins + " of 3, Agents win " + agentWins + " of 3.";
             sendEvent(emitter, CombatEvent.of("Neo", "result", roundResult,
                     round, neoScore.get(), agentsScore.get()));
 
@@ -144,10 +144,10 @@ public class CombatService {
                     smithResult, round, neoScore.get(), agentsScore.get()));
 
             int agentWins = (brownWins ? 1 : 0) + (jonesWins ? 1 : 0) + (smithWins ? 1 : 0);
-            String roundResult = agentWins == 3 ? "All three agents overwhelm Neo!"
-                    : agentWins >= 2 ? "Agents dominate!"
-                    : agentWins == 1 ? "Split round."
-                    : "Neo defeats all agents.";
+            int neoWins = 3 - agentWins;
+            String roundResult = agentWins == 3 ? "Agents win all 3 fights! Neo is overwhelmed."
+                    : agentWins == 0 ? "Neo wins all 3 fights! The One cannot be stopped."
+                    : "Neo wins " + neoWins + " of 3, Agents win " + agentWins + " of 3.";
             sendEvent(emitter, CombatEvent.of("Neo", "result", roundResult,
                     round, neoScore.get(), agentsScore.get()));
 
@@ -217,10 +217,11 @@ public class CombatService {
                     neoScore.incrementAndGet();
                 }
 
-                String roundResult = agentSubWins == 3 ? "All three agents overwhelm Neo! Agents win the round!"
-                        : agentSubWins == 2 ? "Agents dominate! Agents win the round!"
-                        : agentSubWins == 1 ? "Split round. Neo wins the round!"
-                        : "Neo defeats all three. Neo wins the round!";
+                int neoSubWins = 3 - agentSubWins;
+                String roundResult = agentSubWins == 3 ? "Agents win all 3 fights! Agents win the round!"
+                        : agentSubWins == 0 ? "Neo wins all 3 fights! Neo wins the round!"
+                        : "Neo wins " + neoSubWins + " of 3, Agents win " + agentSubWins + " of 3. "
+                            + (agentSubWins >= 2 ? "Agents win the round!" : "Neo wins the round!");
                 sendEvent(emitter, CombatEvent.of("Neo", "result", roundResult,
                         round, neoScore.get(), agentsScore.get()));
 
