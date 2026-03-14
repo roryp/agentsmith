@@ -28,7 +28,7 @@ public class CombatController {
         return emitter;
     }
 
-    /** Pattern 2: Parallel — Brown and Jones fight simultaneously */
+    /** Pattern 2: Parallel — Brown, Jones, and Smith fight simultaneously */
     @GetMapping(value = "/fight/parallel", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter fightParallel(@RequestParam(defaultValue = "false") boolean theOne) {
         SseEmitter emitter = new SseEmitter(120_000L);

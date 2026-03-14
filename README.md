@@ -25,7 +25,7 @@ Agents Brown, Jones, and Smith fight Neo in pixel-art combat rounds — powered 
 │                                                  │
 │  ⚔ Sequential: Brown → Jones → Smith in order   │
 │  ⚡ Parallel:  All three fight simultaneously    │
-│  🔄 Loop:     Auto-battle until first to 5 wins  │
+│  🔄 Loop:     Auto-battle — Neo must survive 5  │
 │                                                  │
 │  Brown (@Agent) ─┐                               │
 │  Jones (@Agent) ─┼── fight Neo                   │
@@ -124,13 +124,13 @@ Open **http://localhost:8080** in your browser.
 |-----------------|---------|-------------|
 | **⚔ FIGHT** | Sequential (#1) | Brown → Jones → Smith fight Neo one after another |
 | **⚡ FAST** | Parallel (#2) | All three agents fight Neo simultaneously |
-| **🔄 AUTO 5** | Loop (#3) | Auto-battles rounds until someone hits 5 wins |
+| **🔄 AUTO 5** | Loop (#3) | Auto-battles — Neo must survive 5 rounds without a single agent kill |
 | **↺ RESET** | — | Resets scores to 0 |
 | **☑ NEO IS THE ONE** | Modifier | Makes Neo far stronger (agents drop to 15/10/20% win chance) |
 
-- Each round, all three agents fight Neo — the round summary shows the breakdown (e.g. *"Neo wins 2 of 3, Agents win 1 of 3"*)
+- Each round, all three agents fight Neo — the round summary shows the breakdown (e.g. *"Neo wins 2 of 3, Agents win 1 of 3. One kill is enough — agents win the round!"*)
 - **Sequential / Parallel**: Each sub-fight awards 1 point to the winner independently
-- **Auto-battle**: Majority of 3 sub-fights wins the round (1 point). First to 5 round-wins.
+- **Auto-battle**: If **any** agent kills Neo, Neo is dead and the battle ends immediately. Neo must survive all 3 agents in every round for 5 rounds to win.
 - **Normal mode**: Agent win chances per sub-fight: Brown 60%, Jones 55%, Smith 65% (agents favored)
 - **"The One" mode**: Agent win chances drop to Brown 15%, Jones 10%, Smith 20% (Neo dominates)
 - Real-time **progress logging** shows backend activity (agent init, LLM calls, response status)
@@ -141,16 +141,54 @@ Open **http://localhost:8080** in your browser.
 | Mode | How scoring works |
 |------|-------------------|
 | **Sequential / Parallel** | Each agent sub-fight awards 1 point to the winner (Neo or Agents) |
-| **Auto-battle (Loop)** | **Round-based**: 3 sub-fights per round, majority wins → 1 point. First to 5 round-wins. |
+| **Auto-battle (Loop)** | **Survival**: If any agent lands a kill, Neo is dead — game over. Neo must survive all 3 agents for 5 consecutive rounds to win. |
 
-## How the LLM Agents Work
+## How the LangChain4j Agentic Patterns Work
 
-Each agent (`AgentBrown`, `AgentJones`, `AgentSmith`) is a LangChain4j `@Agent` interface with a `@SystemMessage` prompt that defines their personality. The flow:
+This project demonstrates all three **LangChain4j Agentic** workflow patterns using `AgenticServices`:
 
-1. **`AiConfig`** creates an `AzureOpenAiChatModel` bean using your Azure OpenAI endpoint + deployment with Entra ID auth (`DefaultAzureCredential`)
-2. **`CombatService`** builds each agent via `AgenticServices.agentBuilder(AgentX.class).chatModel(chatModel).build()`
-3. Each `fight()` call sends a prompt to the LLM (e.g. *"Round 3. You WIN. One sentence."*) and the agent generates a unique combat narration
-4. In auto-battle line, all three `fight()` calls run **concurrently** via `CompletableFuture.supplyAsync()` — 3 parallel LLM calls per round
+### Pattern 1: Sequential Chain (`agentBuilder`)
+
+```
+Brown.fight() → Jones.fight(Brown's output) → Smith.fight(Jones's output)
+```
+
+Each agent is built once at startup via `AgenticServices.agentBuilder(AgentX.class).chatModel(chatModel).build()`. In sequential mode, agents fight **one after another** — each agent receives the previous agent's combat narration as context, which influences their tone:
+- If the previous agent **won**, the next agent speaks with pride/confidence
+- If the previous agent **lost**, the next agent speaks with urgency/contempt
+
+This demonstrates how sequential chains pass state between agents, where each step's output shapes the next step's behavior.
+
+### Pattern 2: Parallel Fan-out (`parallelBuilder`)
+
+```
+              ┌─ Brown.fight() ─┐
+fightAll() ───┼─ Jones.fight() ─┼──→ combined results
+              └─ Smith.fight() ─┘
+```
+
+A `ParallelCombatAgent` is built via `AgenticServices.parallelBuilder()` with all three agents as sub-agents. A single `fightAll()` call fans out to all three agents **simultaneously** — 3 concurrent LLM calls. Results are combined via an `output` function that reads each agent's `outputKey` from the shared scope.
+
+### Pattern 3: Loop (`loopBuilder`)
+
+```
+┌→ roundSetup (agentAction) → parallelCombat → roundScorer (agentAction) ─┐
+└─────────────────── repeat until exit condition ─────────────────────────┘
+```
+
+The auto-battle uses `AgenticServices.loopBuilder()` with three sub-agents per iteration:
+1. **`roundSetup`** — a non-AI `agentAction` that rolls random outcomes and writes the prompt to scope
+2. **`parallelAgent`** — the same parallel fan-out from Pattern 2, running all 3 LLM calls concurrently
+3. **`roundScorer`** — a non-AI `agentAction` that reads results from scope, scores the round, and emits SSE events
+
+The loop repeats until the `exitCondition` is met (Neo dies or survives 5 rounds). This shows how `loopBuilder` orchestrates a mix of AI and non-AI agents in a repeating workflow with shared state.
+
+### Agent Definitions
+
+Each agent (`AgentBrown`, `AgentJones`, `AgentSmith`) is a simple Java interface annotated with:
+- **`@Agent`** — marks it as a LangChain4j agent with a description
+- **`@SystemMessage`** — defines the agent's personality and behavior rules
+- **`@UserMessage`** — template for the fight prompt
 
 The **win/loss outcome** is pre-determined by random probabilities, but the **combat narration text** is generated live by the LLM each time, giving every fight a unique description.
 
@@ -175,7 +213,8 @@ src/main/java/com/agentsmith/
 ├── agents/
 │   ├── AgentBrown.java                 # @Agent (Brown)
 │   ├── AgentJones.java                 # @Agent (Jones)
-│   └── AgentSmith.java                 # @Agent (Smith — fights Neo himself)
+│   ├── AgentSmith.java                 # @Agent (Smith — the most dangerous)
+│   └── ParallelCombatAgent.java        # Parent agent for parallel fan-out
 ├── config/
 │   └── AiConfig.java                   # ChatModel bean (Azure + DefaultAzureCredential)
 ├── controller/

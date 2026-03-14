@@ -683,21 +683,27 @@
             addLogEntry(data);
             updateScores(data);
 
-            // Skip animations for progress/system events
-            if (data.type === 'progress' || data.type === 'system') return;
+            // Skip animations for progress events
+            if (data.type === 'progress') return;
+
+            // Final match outcome — update expressions to reflect the winner
+            if (data.type === 'system') {
+                const neoWon = data.neoScore > data.agentsScore;
+                updateCharExpression('brown', neoWon ? 'lose' : 'win');
+                updateCharExpression('jones', neoWon ? 'lose' : 'win');
+                updateCharExpression('smith', neoWon ? 'lose' : 'win');
+                updateCharExpression('neo', neoWon ? 'win' : 'lose');
+                return;
+            }
 
             const agentKey = data.agent.toLowerCase();
 
-            // Update pixel face expressions — agents are a team
+            // Update pixel face expressions per individual fight
             if (data.type === 'attack-win') {
-                updateCharExpression('brown', 'win');
-                updateCharExpression('jones', 'win');
-                updateCharExpression('smith', 'win');
+                updateCharExpression(agentKey, 'win');
                 updateCharExpression('neo', 'lose');
             } else if (data.type === 'attack') {
-                updateCharExpression('brown', 'lose');
-                updateCharExpression('jones', 'lose');
-                updateCharExpression('smith', 'lose');
+                updateCharExpression(agentKey, 'lose');
                 updateCharExpression('neo', 'win');
             }
 
@@ -714,7 +720,13 @@
             } else if (data.agent === 'Smith') {
                 playAnimation('smith-attack');
             } else if (data.type === 'result') {
-                // no redraw needed, characters stay in place
+                // Determine round winner from the message text, not cumulative scores
+                const msg = (data.message || '').toLowerCase();
+                const agentsWonRound = msg.includes('agents win');
+                updateCharExpression('brown', agentsWonRound ? 'win' : 'lose');
+                updateCharExpression('jones', agentsWonRound ? 'win' : 'lose');
+                updateCharExpression('smith', agentsWonRound ? 'win' : 'lose');
+                updateCharExpression('neo', agentsWonRound ? 'lose' : 'win');
             }
         });
 
@@ -735,7 +747,7 @@
             document.getElementById('neo-score').textContent = '0';
             document.getElementById('agents-score').textContent = '0';
             document.getElementById('round-display').textContent = 'ROUND 0';
-            addLogEntry({ agent: 'System', type: 'system', message: 'AUTO-BATTLE: First to 5 round wins!', neoScore: 0, agentsScore: 0, round: 0 });
+            addLogEntry({ agent: 'System', type: 'system', message: 'AUTO-BATTLE: Neo must survive 5 rounds!', neoScore: 0, agentsScore: 0, round: 0 });
             runAutoRound();
         });
     }
@@ -754,16 +766,20 @@
             updateScores(data);
             if (data.type === 'progress' || data.type === 'system') return;
 
+            const agentKey = data.agent.toLowerCase();
             if (data.type === 'attack-win') {
-                updateCharExpression('brown', 'win');
-                updateCharExpression('jones', 'win');
-                updateCharExpression('smith', 'win');
+                updateCharExpression(agentKey, 'win');
                 updateCharExpression('neo', 'lose');
             } else if (data.type === 'attack') {
-                updateCharExpression('brown', 'lose');
-                updateCharExpression('jones', 'lose');
-                updateCharExpression('smith', 'lose');
+                updateCharExpression(agentKey, 'lose');
                 updateCharExpression('neo', 'win');
+            } else if (data.type === 'result') {
+                const msg = (data.message || '').toLowerCase();
+                const agentsWonRound = msg.includes('agents win');
+                updateCharExpression('brown', agentsWonRound ? 'win' : 'lose');
+                updateCharExpression('jones', agentsWonRound ? 'win' : 'lose');
+                updateCharExpression('smith', agentsWonRound ? 'win' : 'lose');
+                updateCharExpression('neo', agentsWonRound ? 'lose' : 'win');
             }
 
             if (data.agent === 'Brown' && data.type === 'attack-win') playAnimation('brown-wins');
@@ -776,10 +792,10 @@
 
         eventSource.onerror = () => {
             eventSource.close();
-            if (lastData && (lastData.neoScore >= 5 || lastData.agentsScore >= 5)) {
-                // Battle over — set faces to reflect the overall winner
-                const neoWon = lastData.neoScore >= 5;
-                const winner = neoWon ? 'NEO WINS THE BATTLE!' : 'AGENTS WIN THE BATTLE!';
+            if (lastData && (lastData.neoScore >= 5 || lastData.agentsScore >= 1)) {
+                // Battle over — Neo died or survived 5 rounds
+                const neoWon = lastData.agentsScore === 0 && lastData.neoScore >= 5;
+                const winner = neoWon ? 'NEO SURVIVES 5 ROUNDS! The One cannot be stopped.' : 'NEO IS DEAD! The Matrix is restored.';
                 updateCharExpression('brown', neoWon ? 'lose' : 'win');
                 updateCharExpression('jones', neoWon ? 'lose' : 'win');
                 updateCharExpression('smith', neoWon ? 'lose' : 'win');

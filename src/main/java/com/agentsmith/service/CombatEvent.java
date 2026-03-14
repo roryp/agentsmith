@@ -1,7 +1,5 @@
 package com.agentsmith.service;
 
-import java.util.Map;
-
 /**
  * Represents a single combat event streamed to the frontend.
  */
