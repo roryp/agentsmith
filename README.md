@@ -120,6 +120,10 @@ Open **http://localhost:8080** in your browser.
 
 ## How to Play
 
+<img src="./docs/game-modes.png" alt="Agent Combat Arena - Game Modes" width="800"/>
+
+*Three LangChain4j agentic patterns power the combat: Sequential chains each agent's output to the next, Parallel fans out all three fights simultaneously, and Auto-Battle loops until Neo dies or survives 5 rounds.*
+
 | Button / Control | Pattern | What happens |
 |-----------------|---------|-------------|
 | **⚔ FIGHT** | Sequential (#1) | Brown → Jones → Smith fight Neo one after another |

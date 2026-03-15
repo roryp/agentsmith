@@ -16,3 +16,4 @@ target/
 .azure/
 .playwright-mcp/
 IMAGE_GENERATION_GUIDE.md
+generate-image.py

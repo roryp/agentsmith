@@ -113,11 +113,27 @@ public class CombatService {
             String brownResult = brownAgent.fight(prompt(round, brownWins));
             scoreAndEmit(emitter, "Brown", brownWins, brownResult, round);
 
+            // If Neo is dead, stop immediately — no point continuing
+            if (brownWins) {
+                sendEvent(emitter, CombatEvent.of("Neo", "result",
+                        "Neo is dead. Brown killed him — fight over.", round, neoScore.get(), agentsScore.get()));
+                emitter.complete();
+                return;
+            }
+
             // Step 2: Jones receives Brown's output — tone adjusts based on Brown's win/loss
             sendProgress(emitter, "Agent Jones → LLM call (receiving Brown's output)...", round);
             String jonesResult = jonesAgent.fight(
                     "Previous agent Brown's result: " + brownResult + ". " + prompt(round, jonesWins));
             scoreAndEmit(emitter, "Jones", jonesWins, jonesResult, round);
+
+            // If Neo is dead, stop immediately
+            if (jonesWins) {
+                sendEvent(emitter, CombatEvent.of("Neo", "result",
+                        "Neo is dead. Jones killed him — fight over.", round, neoScore.get(), agentsScore.get()));
+                emitter.complete();
+                return;
+            }
 
             // Step 3: Smith receives Jones's output — tone adjusts based on Jones's win/loss
             sendProgress(emitter, "Agent Smith → LLM call (receiving Jones's output)...", round);
@@ -125,8 +141,11 @@ public class CombatService {
                     "Previous agent Jones's result: " + jonesResult + ". " + prompt(round, smithWins));
             scoreAndEmit(emitter, "Smith", smithWins, smithResult, round);
 
+            String resultMsg = smithWins
+                    ? "Neo is dead. Smith killed him — fight over."
+                    : "Neo wins all 3 fights! The One cannot be stopped.";
             sendEvent(emitter, CombatEvent.of("Neo", "result",
-                    roundResult(brownWins, jonesWins, smithWins), round, neoScore.get(), agentsScore.get()));
+                    resultMsg, round, neoScore.get(), agentsScore.get()));
             emitter.complete();
         } catch (Exception e) {
             emitError(emitter, round, e);
@@ -157,8 +176,20 @@ public class CombatService {
             scoreAndEmit(emitter, "Jones", jonesWins, results.get("jones"), round);
             scoreAndEmit(emitter, "Smith", smithWins, results.get("smith"), round);
 
+            int agentWins = (brownWins ? 1 : 0) + (jonesWins ? 1 : 0) + (smithWins ? 1 : 0);
+            String resultMsg;
+            if (agentWins == 0) {
+                resultMsg = "Neo wins all 3 fights! The One cannot be stopped.";
+            } else {
+                // Build who killed Neo
+                StringBuilder killers = new StringBuilder();
+                if (brownWins) killers.append("Brown");
+                if (jonesWins) { if (killers.length() > 0) killers.append(" & "); killers.append("Jones"); }
+                if (smithWins) { if (killers.length() > 0) killers.append(" & "); killers.append("Smith"); }
+                resultMsg = "Neo is dead. " + killers + " killed him — fight over.";
+            }
             sendEvent(emitter, CombatEvent.of("Neo", "result",
-                    roundResult(brownWins, jonesWins, smithWins), round, neoScore.get(), agentsScore.get()));
+                    resultMsg, round, neoScore.get(), agentsScore.get()));
             emitter.complete();
         } catch (Exception e) {
             emitError(emitter, round, e);
@@ -221,10 +252,16 @@ public class CombatService {
                 scope.writeState("agentsScore", agentsScore.get());
 
                 int neoSubWins = 3 - agentSubWins;
-                String result = agentSubWins == 3 ? "Agents win all 3! Neo is overwhelmed."
-                        : agentSubWins == 0 ? "Neo wins all 3! The One cannot be stopped."
-                        : "Neo wins " + neoSubWins + "/3, Agents win " + agentSubWins + "/3. "
-                            + "One kill is enough — agents win the round!";
+                String result;
+                if (agentSubWins == 0) {
+                    result = "Neo wins all 3! The One cannot be stopped.";
+                } else {
+                    StringBuilder killers = new StringBuilder();
+                    if (bw) killers.append("Brown");
+                    if (jw) { if (killers.length() > 0) killers.append(" & "); killers.append("Jones"); }
+                    if (sw) { if (killers.length() > 0) killers.append(" & "); killers.append("Smith"); }
+                    result = "Neo is dead. " + killers + " killed him — fight over.";
+                }
                 sendEvent(emitter, CombatEvent.of("Neo", "result", result,
                         round, neoScore.get(), agentsScore.get()));
             });

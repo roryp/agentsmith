@@ -13,7 +13,8 @@
             background: #0a0a0a;
             color: #00ff00;
             font-family: 'Press Start 2P', monospace;
-            overflow: hidden;
+            overflow-x: hidden;
+            overflow-y: auto;
             height: 100vh;
         }
 
@@ -53,8 +54,8 @@
         }
         .score-item { display: flex; align-items: center; gap: 8px; }
         .score-label { color: #888; }
-        .score-neo { color: #00ffff; text-shadow: 0 0 8px #00ffff; }
-        .score-agents { color: #ff4444; text-shadow: 0 0 8px #ff4444; }
+        .score-neo { color: #ffffff; text-shadow: 0 0 8px #ffffff; }
+        .score-agents { color: #00ff00; text-shadow: 0 0 8px #00ff00; }
         .round-display { color: #ffff00; text-shadow: 0 0 8px #ffff00; }
 
         /* Arena */
@@ -86,14 +87,14 @@
         .combat-log::-webkit-scrollbar-thumb { background: #00ff00; }
 
         .log-entry { margin-bottom: 4px; padding: 4px; border-left: 3px solid transparent; }
-        .log-entry.brown { border-color: #8B4513; color: #D2691E; }
-        .log-entry.jones { border-color: #808080; color: #C0C0C0; }
+        .log-entry.brown { border-color: #00cc00; color: #00ff00; }
+        .log-entry.jones { border-color: #00cc00; color: #00ff00; }
         .log-entry.smith { border-color: #00ff00; color: #00ff00; }
-        .log-entry.neo { border-color: #00ffff; color: #00ffff; }
+        .log-entry.neo { border-color: #ffffff; color: #ffffff; }
         .log-entry.system { border-color: #ffff00; color: #ffff00; }
         .log-entry.progress { border-color: #666; color: #777; font-style: italic; font-size: 7px; opacity: 0.8; }
         .log-entry.win { background: rgba(255, 50, 50, 0.15); border-color: #ff4444 !important; }
-        .log-entry.neo-win { background: rgba(0, 255, 255, 0.15); }
+        .log-entry.neo-win { background: rgba(255, 255, 255, 0.1); }
         .log-entry .agent-tag {
             font-weight: bold;
             display: inline-block;
@@ -170,6 +171,34 @@
             padding: 4px;
             color: #888;
         }
+
+        /* Mobile responsiveness */
+        @media (max-width: 768px) {
+            .header h1 { font-size: 11px; }
+            .scoreboard { gap: 15px; font-size: 9px; }
+            .controls {
+                flex-wrap: wrap;
+                gap: 10px;
+                padding: 8px;
+            }
+            .controls > div { flex: 0 0 auto; }
+            button { font-size: 8px; padding: 8px 12px; }
+            .combat-log { height: 120px; font-size: 7px; }
+            .mode-label { font-size: 6px; }
+        }
+
+        @media (max-width: 480px) {
+            .header h1 { font-size: 9px; }
+            .scoreboard { gap: 10px; font-size: 8px; }
+            .controls {
+                flex-wrap: wrap;
+                gap: 8px;
+                padding: 6px;
+                justify-content: center;
+            }
+            button { font-size: 7px; padding: 6px 10px; }
+            .combat-log { height: 100px; }
+        }
     </style>
 </head>
 <body>
@@ -207,8 +236,8 @@
 
         <div class="controls">
             <div style="text-align:center;display:flex;align-items:center;gap:6px">
-                <input type="checkbox" id="the-one-cb" style="width:14px;height:14px;accent-color:#00ffff;cursor:pointer">
-                <label for="the-one-cb" style="font-size:7px;color:#00ffff;cursor:pointer;text-shadow:0 0 5px #00ffff">NEO IS THE ONE</label>
+                <input type="checkbox" id="the-one-cb" style="width:14px;height:14px;accent-color:#ffffff;cursor:pointer">
+                <label for="the-one-cb" style="font-size:7px;color:#ffffff;cursor:pointer;text-shadow:0 0 5px #ffffff">NEO IS THE ONE</label>
             </div>
             <div style="text-align:center">
                 <div class="mode-label">SEQUENTIAL</div>
@@ -263,7 +292,7 @@
     const PIXEL_CHARS = {
         neo: {
             color: '#ffffff',
-            glow: '#aaaaff',
+            glow: '#ffffff',
             normal: [
                 '..XXXXXX..',
                 '.X......X.',
@@ -308,8 +337,8 @@
             ]
         },
         brown: {
-            color: '#D2691E',
-            glow: '#8B4513',
+            color: '#00ff00',
+            glow: '#00ff00',
             normal: [
                 '..XXXXXX..',
                 '.X......X.',
@@ -354,8 +383,8 @@
             ]
         },
         jones: {
-            color: '#C0C0C0',
-            glow: '#808080',
+            color: '#00ff00',
+            glow: '#00ff00',
             normal: [
                 '..XXXXXX..',
                 '.X......X.',
@@ -528,8 +557,8 @@
 
         const labelStyle = { 'font-family': "'Press Start 2P', monospace", 'font-size': '8px' };
         const chars = [
-            { key: 'brown', color: '#D2691E', label: 'BROWN' },
-            { key: 'jones', color: '#C0C0C0', label: 'JONES' },
+            { key: 'brown', color: '#00ff00', label: 'BROWN' },
+            { key: 'jones', color: '#00ff00', label: 'JONES' },
             { key: 'neo',   color: '#ffffff', label: 'NEO' },
             { key: 'smith', color: '#00ff00', label: 'SMITH' },
         ];
@@ -611,7 +640,7 @@
                 .attr('cx', pos.x + 16)
                 .attr('cy', pos.y + 20)
                 .attr('r', 2)
-                .attr('fill', '#00ffff')
+                .attr('fill', '#ffffff')
                 .transition().duration(500).delay(i * 50)
                 .attr('cx', pos.x + 16 + (Math.random() - 0.5) * 80)
                 .attr('cy', pos.y + 20 + (Math.random() - 0.5) * 80)
@@ -720,13 +749,13 @@
             } else if (data.agent === 'Smith') {
                 playAnimation('smith-attack');
             } else if (data.type === 'result') {
-                // Determine round winner from the message text, not cumulative scores
+                // Determine round winner from the message text
                 const msg = (data.message || '').toLowerCase();
-                const agentsWonRound = msg.includes('agents win');
-                updateCharExpression('brown', agentsWonRound ? 'win' : 'lose');
-                updateCharExpression('jones', agentsWonRound ? 'win' : 'lose');
-                updateCharExpression('smith', agentsWonRound ? 'win' : 'lose');
-                updateCharExpression('neo', agentsWonRound ? 'lose' : 'win');
+                const neoDied = msg.includes('neo is dead');
+                updateCharExpression('brown', neoDied ? 'win' : 'lose');
+                updateCharExpression('jones', neoDied ? 'win' : 'lose');
+                updateCharExpression('smith', neoDied ? 'win' : 'lose');
+                updateCharExpression('neo', neoDied ? 'lose' : 'win');
             }
         });
 
@@ -758,16 +787,20 @@
         document.getElementById('status-text').textContent = theOne ? 'Auto-battle (THE ONE)...' : 'Auto-battle...';
         const eventSource = new EventSource('/api/fight/parallel?theOne=' + theOne);
         let lastData = null;
+        let neoDied = false;
+        let roundCount = 0;
 
         eventSource.addEventListener('combat', (e) => {
             const data = JSON.parse(e.data);
             lastData = data;
+            roundCount = data.round;
             addLogEntry(data);
             updateScores(data);
             if (data.type === 'progress' || data.type === 'system') return;
 
             const agentKey = data.agent.toLowerCase();
             if (data.type === 'attack-win') {
+                neoDied = true;
                 updateCharExpression(agentKey, 'win');
                 updateCharExpression('neo', 'lose');
             } else if (data.type === 'attack') {
@@ -775,11 +808,11 @@
                 updateCharExpression('neo', 'win');
             } else if (data.type === 'result') {
                 const msg = (data.message || '').toLowerCase();
-                const agentsWonRound = msg.includes('agents win');
-                updateCharExpression('brown', agentsWonRound ? 'win' : 'lose');
-                updateCharExpression('jones', agentsWonRound ? 'win' : 'lose');
-                updateCharExpression('smith', agentsWonRound ? 'win' : 'lose');
-                updateCharExpression('neo', agentsWonRound ? 'lose' : 'win');
+                const dead = msg.includes('neo is dead');
+                updateCharExpression('brown', dead ? 'win' : 'lose');
+                updateCharExpression('jones', dead ? 'win' : 'lose');
+                updateCharExpression('smith', dead ? 'win' : 'lose');
+                updateCharExpression('neo', dead ? 'lose' : 'win');
             }
 
             if (data.agent === 'Brown' && data.type === 'attack-win') playAnimation('brown-wins');
@@ -792,15 +825,15 @@
 
         eventSource.onerror = () => {
             eventSource.close();
-            if (lastData && (lastData.neoScore >= 5 || lastData.agentsScore >= 1)) {
+            if (neoDied || (lastData && roundCount >= 5)) {
                 // Battle over — Neo died or survived 5 rounds
-                const neoWon = lastData.agentsScore === 0 && lastData.neoScore >= 5;
+                const neoWon = !neoDied && roundCount >= 5;
                 const winner = neoWon ? 'NEO SURVIVES 5 ROUNDS! The One cannot be stopped.' : 'NEO IS DEAD! The Matrix is restored.';
                 updateCharExpression('brown', neoWon ? 'lose' : 'win');
                 updateCharExpression('jones', neoWon ? 'lose' : 'win');
                 updateCharExpression('smith', neoWon ? 'lose' : 'win');
                 updateCharExpression('neo', neoWon ? 'win' : 'lose');
-                addLogEntry({ agent: 'System', type: 'system', message: winner, neoScore: lastData.neoScore, agentsScore: lastData.agentsScore, round: lastData.round });
+                addLogEntry({ agent: 'System', type: 'system', message: winner, neoScore: lastData.neoScore, agentsScore: lastData.agentsScore, round: roundCount });
                 fighting = false;
                 setButtonsDisabled(false);
                 document.getElementById('status-text').textContent = winner;
