@@ -151,17 +151,17 @@ Open **http://localhost:8080** in your browser.
 
 This project demonstrates all three **LangChain4j Agentic** workflow patterns using `AgenticServices`:
 
-### Pattern 1: Sequential Chain (`agentBuilder`)
+### Pattern 1: Sequential Chain (`sequenceBuilder`)
 
 ```
-Brown.fight() → Jones.fight(Brown's output) → Smith.fight(Jones's output)
+setupBrown (agentAction) → Brown.fight() → scoreBrown+setupJones (agentAction) → Jones.fight() → scoreJones+setupSmith (agentAction) → Smith.fight()
 ```
 
-Each agent is built once at startup via `AgenticServices.agentBuilder(AgentX.class).chatModel(chatModel).build()`. In sequential mode, agents fight **one after another** — each agent receives the previous agent's combat narration as context, which influences their tone:
+The sequential workflow is built via `AgenticServices.sequenceBuilder()` with a mix of AI agents and non-AI `agentAction` nodes. The `agentAction` nodes prepare each agent's prompt in the `AgenticScope` shared state and emit SSE progress events, while the AI agents read their input from scope and write their output back via `outputKey`. Each agent receives the previous agent's combat narration as context (via scope), which influences their tone:
 - If the previous agent **won**, the next agent speaks with pride/confidence
 - If the previous agent **lost**, the next agent speaks with urgency/contempt
 
-This demonstrates how sequential chains pass state between agents, where each step's output shapes the next step's behavior.
+This demonstrates how `sequenceBuilder()` chains agents together with shared state flowing through `AgenticScope`, where each step's output shapes the next step's behavior.
 
 ### Pattern 2: Parallel Fan-out (`parallelBuilder`)
 

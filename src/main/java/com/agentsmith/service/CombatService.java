@@ -4,7 +4,9 @@ import com.agentsmith.agents.AgentBrown;
 import com.agentsmith.agents.AgentJones;
 import com.agentsmith.agents.AgentSmith;
 import com.agentsmith.agents.ParallelCombatAgent;
+import com.agentsmith.agents.SequentialCombatAgent;
 import dev.langchain4j.agentic.AgenticServices;
+import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.model.chat.ChatModel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,12 +28,15 @@ public class CombatService {
     private final AgentJones jonesAgent;
     private final AgentSmith smithAgent;
     private final ParallelCombatAgent parallelAgent;
+    private final ChatModel chatModel;
 
     private final AtomicInteger neoScore = new AtomicInteger(0);
     private final AtomicInteger agentsScore = new AtomicInteger(0);
     private final AtomicInteger currentRound = new AtomicInteger(0);
 
     public CombatService(ChatModel chatModel) {
+        this.chatModel = chatModel;
+
         // Build agents ONCE — eliminates per-request proxy/builder overhead
         this.brownAgent = AgenticServices.agentBuilder(AgentBrown.class)
                 .chatModel(chatModel).outputKey("brownResult").build();
@@ -98,7 +103,8 @@ public class CombatService {
         return "Neo wins " + neoWins + " of 3, Agents win " + agentWins + " of 3. One win is enough — agents win the round!";
     }
 
-    // ─── Pattern 1: Sequential (Chain) — Brown → Jones → Smith, each output → next input ───
+    // ─── Pattern 1: Sequential (Chain) via AgenticServices.sequenceBuilder() ───
+    // Brown → Jones → Smith, each output flows to the next via AgenticScope shared state
     public void runSequentialRound(SseEmitter emitter, boolean theOne) {
         int round = currentRound.incrementAndGet();
         try {
@@ -106,44 +112,55 @@ public class CombatService {
             boolean brownWins = outcomes[0], jonesWins = outcomes[1], smithWins = outcomes[2];
 
             if (theOne) sendProgress(emitter, "Neo is THE ONE. Agents don't stand a chance.", round);
-            sendProgress(emitter, "Sequential chain: Brown → Jones → Smith (each output → next input)...", round);
+            sendProgress(emitter, "Sequential workflow via sequenceBuilder(): Brown → Jones → Smith (each output → next input)...", round);
 
-            // Step 1: Brown fights first (no previous result)
-            sendProgress(emitter, "Agent Brown → LLM call...", round);
-            String brownResult = brownAgent.fight(prompt(round, brownWins));
-            scoreAndEmit(emitter, "Brown", brownWins, brownResult, round);
+            // agentAction: prepare Brown's prompt in scope
+            var setupBrown = AgenticServices.agentAction(scope -> {
+                scope.writeState("request", prompt(round, brownWins));
+                sendProgress(emitter, "Agent Brown → LLM call...", round);
+            });
 
-            // If Neo lost, stop immediately — no point continuing
-            if (brownWins) {
-                sendEvent(emitter, CombatEvent.of("Neo", "result",
-                        "Neo loses. Brown beat him — fight over.", round, neoScore.get(), agentsScore.get()));
-                emitter.complete();
-                return;
+            // agentAction: score Brown's fight, then prepare Jones's prompt with Brown's output
+            var scoreBrownSetupJones = AgenticServices.agentAction(scope -> {
+                String brownResult = scope.readState("brownResult", "");
+                scoreAndEmit(emitter, "Brown", brownWins, brownResult, round);
+                scope.writeState("request",
+                        "Previous agent Brown's result: " + brownResult + ". " + prompt(round, jonesWins));
+                sendProgress(emitter, "Agent Jones → LLM call (receiving Brown's output)...", round);
+            });
+
+            // agentAction: score Jones's fight, then prepare Smith's prompt with Jones's output
+            var scoreJonesSetupSmith = AgenticServices.agentAction(scope -> {
+                String jonesResult = scope.readState("jonesResult", "");
+                scoreAndEmit(emitter, "Jones", jonesWins, jonesResult, round);
+                scope.writeState("request",
+                        "Previous agent Jones's result: " + jonesResult + ". " + prompt(round, smithWins));
+                sendProgress(emitter, "Agent Smith → LLM call (receiving Jones's output)...", round);
+            });
+
+            // Build sequence using AgenticServices.sequenceBuilder() — proper LangChain4j agentic pattern
+            UntypedAgent sequentialCombat = AgenticServices
+                    .sequenceBuilder()
+                    .subAgents(setupBrown, brownAgent, scoreBrownSetupJones, jonesAgent, scoreJonesSetupSmith, smithAgent)
+                    .build();
+
+            // Execute the sequence — AgenticScope handles state passing automatically
+            sequentialCombat.invoke(Map.of("request", prompt(round, brownWins)));
+
+            // Score Smith's fight and emit final result
+            scoreAndEmit(emitter, "Smith", smithWins, null, round);
+
+            int agentWins = (brownWins ? 1 : 0) + (jonesWins ? 1 : 0) + (smithWins ? 1 : 0);
+            String resultMsg;
+            if (agentWins == 0) {
+                resultMsg = "Neo wins all 3 fights! The One cannot be stopped.";
+            } else {
+                StringBuilder winners = new StringBuilder();
+                if (brownWins) winners.append("Brown");
+                if (jonesWins) { if (winners.length() > 0) winners.append(" & "); winners.append("Jones"); }
+                if (smithWins) { if (winners.length() > 0) winners.append(" & "); winners.append("Smith"); }
+                resultMsg = "Neo loses. " + winners + " beat him — fight over.";
             }
-
-            // Step 2: Jones receives Brown's output — tone adjusts based on Brown's win/loss
-            sendProgress(emitter, "Agent Jones → LLM call (receiving Brown's output)...", round);
-            String jonesResult = jonesAgent.fight(
-                    "Previous agent Brown's result: " + brownResult + ". " + prompt(round, jonesWins));
-            scoreAndEmit(emitter, "Jones", jonesWins, jonesResult, round);
-
-            // If Neo lost, stop immediately
-            if (jonesWins) {
-                sendEvent(emitter, CombatEvent.of("Neo", "result",
-                        "Neo loses. Jones beat him — fight over.", round, neoScore.get(), agentsScore.get()));
-                emitter.complete();
-                return;
-            }
-
-            // Step 3: Smith receives Jones's output — tone adjusts based on Jones's win/loss
-            sendProgress(emitter, "Agent Smith → LLM call (receiving Jones's output)...", round);
-            String smithResult = smithAgent.fight(
-                    "Previous agent Jones's result: " + jonesResult + ". " + prompt(round, smithWins));
-            scoreAndEmit(emitter, "Smith", smithWins, smithResult, round);
-
-            String resultMsg = smithWins
-                    ? "Neo loses. Smith beat him — fight over."
-                    : "Neo wins all 3 fights! The One cannot be stopped.";
             sendEvent(emitter, CombatEvent.of("Neo", "result",
                     resultMsg, round, neoScore.get(), agentsScore.get()));
             emitter.complete();
@@ -169,6 +186,7 @@ public class CombatService {
                     + ". Agent Smith: " + (smithWins ? "WIN" : "LOSE")
                     + ". One sentence.";
 
+            //generate the parallelAgent in the constructor and reuse the same parallelAgent instance to avoid builder overhead
             Map<String, String> results = parallelAgent.fightAll(fanOutPrompt);
             sendProgress(emitter, "All 3 responses received.", round);
 
