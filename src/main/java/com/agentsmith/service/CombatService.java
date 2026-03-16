@@ -27,7 +27,6 @@ public class CombatService {
     private final AgentBrown brownAgent;
     private final AgentJones jonesAgent;
     private final AgentSmith smithAgent;
-    private final ParallelCombatAgent parallelAgent;
     private final ChatModel chatModel;
 
     private final AtomicInteger neoScore = new AtomicInteger(0);
@@ -44,17 +43,6 @@ public class CombatService {
                 .chatModel(chatModel).outputKey("jonesResult").build();
         this.smithAgent = AgenticServices.agentBuilder(AgentSmith.class)
                 .chatModel(chatModel).outputKey("smithResult").build();
-
-        // Build parallel workflow ONCE via AgenticServices.parallelBuilder()
-        this.parallelAgent = AgenticServices
-                .parallelBuilder(ParallelCombatAgent.class)
-                .subAgents(brownAgent, jonesAgent, smithAgent)
-                .outputKey("combatResults")
-                .output(scope -> Map.of(
-                        "brown", scope.readState("brownResult", ""),
-                        "jones", scope.readState("jonesResult", ""),
-                        "smith", scope.readState("smithResult", "")))
-                .build();
     }
 
     public void resetScores() {
@@ -186,7 +174,16 @@ public class CombatService {
                     + ". Agent Smith: " + (smithWins ? "WIN" : "LOSE")
                     + ". One sentence.";
 
-            //generate the parallelAgent in the constructor and reuse the same parallelAgent instance to avoid builder overhead
+            // Build parallel workflow in-method — consistent with sequential/loop patterns
+            ParallelCombatAgent parallelAgent = AgenticServices
+                .parallelBuilder(ParallelCombatAgent.class)
+                .subAgents(brownAgent, jonesAgent, smithAgent)
+                .outputKey("combatResults")
+                .output(scope -> Map.of(
+                        "brown", scope.readState("brownResult", ""),
+                        "jones", scope.readState("jonesResult", ""),
+                        "smith", scope.readState("smithResult", "")))
+                .build();
             Map<String, String> results = parallelAgent.fightAll(fanOutPrompt);
             sendProgress(emitter, "All 3 responses received.", round);
 
@@ -283,6 +280,17 @@ public class CombatService {
                 sendEvent(emitter, CombatEvent.of("Neo", "result", result,
                         round, neoScore.get(), agentsScore.get()));
             });
+
+            // Build parallel workflow for loop sub-agent
+            ParallelCombatAgent parallelAgent = AgenticServices
+                .parallelBuilder(ParallelCombatAgent.class)
+                .subAgents(brownAgent, jonesAgent, smithAgent)
+                .outputKey("combatResults")
+                .output(scope -> Map.of(
+                        "brown", scope.readState("brownResult", ""),
+                        "jones", scope.readState("jonesResult", ""),
+                        "smith", scope.readState("smithResult", "")))
+                .build();
 
             // Loop workflow: roundSetup → parallelCombat → roundScorer, repeat until Neo loses or wins 5
             var autoBattleLoop = AgenticServices
