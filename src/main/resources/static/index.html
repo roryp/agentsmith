@@ -751,11 +751,11 @@
             } else if (data.type === 'result') {
                 // Determine round winner from the message text
                 const msg = (data.message || '').toLowerCase();
-                const neoDied = msg.includes('neo is dead');
-                updateCharExpression('brown', neoDied ? 'win' : 'lose');
-                updateCharExpression('jones', neoDied ? 'win' : 'lose');
-                updateCharExpression('smith', neoDied ? 'win' : 'lose');
-                updateCharExpression('neo', neoDied ? 'lose' : 'win');
+                const neoLost = msg.includes('neo loses');
+                updateCharExpression('brown', neoLost ? 'win' : 'lose');
+                updateCharExpression('jones', neoLost ? 'win' : 'lose');
+                updateCharExpression('smith', neoLost ? 'win' : 'lose');
+                updateCharExpression('neo', neoLost ? 'lose' : 'win');
             }
         });
 
@@ -787,7 +787,7 @@
         document.getElementById('status-text').textContent = theOne ? 'Auto-battle (THE ONE)...' : 'Auto-battle...';
         const eventSource = new EventSource('/api/fight/parallel?theOne=' + theOne);
         let lastData = null;
-        let neoDied = false;
+        let neoLost = false;
         let roundCount = 0;
 
         eventSource.addEventListener('combat', (e) => {
@@ -800,7 +800,7 @@
 
             const agentKey = data.agent.toLowerCase();
             if (data.type === 'attack-win') {
-                neoDied = true;
+                neoLost = true;
                 updateCharExpression(agentKey, 'win');
                 updateCharExpression('neo', 'lose');
             } else if (data.type === 'attack') {
@@ -808,11 +808,11 @@
                 updateCharExpression('neo', 'win');
             } else if (data.type === 'result') {
                 const msg = (data.message || '').toLowerCase();
-                const dead = msg.includes('neo is dead');
-                updateCharExpression('brown', dead ? 'win' : 'lose');
-                updateCharExpression('jones', dead ? 'win' : 'lose');
-                updateCharExpression('smith', dead ? 'win' : 'lose');
-                updateCharExpression('neo', dead ? 'lose' : 'win');
+                const lost = msg.includes('neo loses');
+                updateCharExpression('brown', lost ? 'win' : 'lose');
+                updateCharExpression('jones', lost ? 'win' : 'lose');
+                updateCharExpression('smith', lost ? 'win' : 'lose');
+                updateCharExpression('neo', lost ? 'lose' : 'win');
             }
 
             if (data.agent === 'Brown' && data.type === 'attack-win') playAnimation('brown-wins');
@@ -825,10 +825,10 @@
 
         eventSource.onerror = () => {
             eventSource.close();
-            if (neoDied || (lastData && roundCount >= 5)) {
-                // Battle over — Neo died or survived 5 rounds
-                const neoWon = !neoDied && roundCount >= 5;
-                const winner = neoWon ? 'NEO SURVIVES 5 ROUNDS! The One cannot be stopped.' : 'NEO IS DEAD! The Matrix is restored.';
+            if (neoLost || (lastData && roundCount >= 5)) {
+                // Battle over — Neo lost or survived 5 rounds
+                const neoWon = !neoLost && roundCount >= 5;
+                const winner = neoWon ? 'NEO SURVIVES 5 ROUNDS! The One cannot be stopped.' : 'NEO LOSES! The Matrix is restored.';
                 updateCharExpression('brown', neoWon ? 'lose' : 'win');
                 updateCharExpression('jones', neoWon ? 'lose' : 'win');
                 updateCharExpression('smith', neoWon ? 'lose' : 'win');

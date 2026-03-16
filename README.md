@@ -122,19 +122,19 @@ Open **http://localhost:8080** in your browser.
 
 <img src="./docs/game-modes.png" alt="Agent Combat Arena - Game Modes" width="800"/>
 
-*Three LangChain4j agentic patterns power the combat: Sequential chains each agent's output to the next, Parallel fans out all three fights simultaneously, and Auto-Battle loops until Neo dies or survives 5 rounds.*
+*Three LangChain4j agentic patterns power the combat: Sequential chains each agent's output to the next, Parallel fans out all three fights simultaneously, and Auto-Battle loops until Neo loses or survives 5 rounds.*
 
 | Button / Control | Pattern | What happens |
 |-----------------|---------|-------------|
 | **⚔ FIGHT** | Sequential (#1) | Brown → Jones → Smith fight Neo one after another |
 | **⚡ FAST** | Parallel (#2) | All three agents fight Neo simultaneously |
-| **🔄 AUTO 5** | Loop (#3) | Auto-battles — Neo must survive 5 rounds without a single agent kill |
+| **🔄 AUTO 5** | Loop (#3) | Auto-battles — Neo must survive 5 rounds without a single agent win |
 | **↺ RESET** | — | Resets scores to 0 |
 | **☑ NEO IS THE ONE** | Modifier | Makes Neo far stronger (agents drop to 15/10/20% win chance) |
 
-- Each round, all three agents fight Neo — the round summary shows the breakdown (e.g. *"Neo wins 2 of 3, Agents win 1 of 3. One kill is enough — agents win the round!"*)
+- Each round, all three agents fight Neo — the round summary shows the breakdown (e.g. *"Neo wins 2 of 3, Agents win 1 of 3. One win is enough — agents win the round!"*)
 - **Sequential / Parallel**: Each sub-fight awards 1 point to the winner independently
-- **Auto-battle**: If **any** agent kills Neo, Neo is dead and the battle ends immediately. Neo must survive all 3 agents in every round for 5 rounds to win.
+- **Auto-battle**: If **any** agent beats Neo, Neo loses and the battle ends immediately. Neo must survive all 3 agents in every round for 5 rounds to win.
 - **Normal mode**: Agent win chances per sub-fight: Brown 60%, Jones 55%, Smith 65% (agents favored)
 - **"The One" mode**: Agent win chances drop to Brown 15%, Jones 10%, Smith 20% (Neo dominates)
 - Real-time **progress logging** shows backend activity (agent init, LLM calls, response status)
@@ -145,7 +145,7 @@ Open **http://localhost:8080** in your browser.
 | Mode | How scoring works |
 |------|-------------------|
 | **Sequential / Parallel** | Each agent sub-fight awards 1 point to the winner (Neo or Agents) |
-| **Auto-battle (Loop)** | **Survival**: If any agent lands a kill, Neo is dead — game over. Neo must survive all 3 agents for 5 consecutive rounds to win. |
+| **Auto-battle (Loop)** | **Survival**: If any agent beats Neo, Neo loses — game over. Neo must survive all 3 agents for 5 consecutive rounds to win. |
 
 ## How the LangChain4j Agentic Patterns Work
 
@@ -185,7 +185,7 @@ The auto-battle uses `AgenticServices.loopBuilder()` with three sub-agents per i
 2. **`parallelAgent`** — the same parallel fan-out from Pattern 2, running all 3 LLM calls concurrently
 3. **`roundScorer`** — a non-AI `agentAction` that reads results from scope, scores the round, and emits SSE events
 
-The loop repeats until the `exitCondition` is met (Neo dies or survives 5 rounds). This shows how `loopBuilder` orchestrates a mix of AI and non-AI agents in a repeating workflow with shared state.
+The loop repeats until the `exitCondition` is met (Neo loses or survives 5 rounds). This shows how `loopBuilder` orchestrates a mix of AI and non-AI agents in a repeating workflow with shared state.
 
 ### Agent Definitions
 
