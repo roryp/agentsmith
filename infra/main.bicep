@@ -9,14 +9,26 @@ param environmentName string
 @description('Primary location for all resources')
 param location string
 
-@description('The model to deploy')
-param modelName string = 'gpt-5-nano'
+@description('The deployment name exposed to applications')
+param deploymentName string = 'gpt-4o-mini-fast'
+
+@description('The base model to deploy')
+param modelName string = 'gpt-4o-mini'
 
 @description('The model format')
 param modelFormat string = 'OpenAI'
 
 @description('The model version')
-param modelVersion string = '2025-08-07'
+param modelVersion string = '2024-07-18'
+
+@description('The model deployment capacity')
+param modelCapacity int = 500
+
+@description('Minimum number of Container App replicas')
+param minReplicas int = 2
+
+@description('Maximum number of Container App replicas')
+param maxReplicas int = 10
 
 var abbrs = loadJsonContent('abbreviations.json')
 var resourceToken = toLower(uniqueString(subscription().id, environmentName, location))
@@ -37,9 +49,11 @@ module aiServices 'modules/ai-services.bicep' = {
     name: '${abbrs.aiServices}${resourceToken}'
     location: location
     tags: tags
+    deploymentName: deploymentName
     modelName: modelName
     modelFormat: modelFormat
     modelVersion: modelVersion
+    modelCapacity: modelCapacity
   }
 }
 
@@ -64,16 +78,18 @@ module containerApp 'modules/container-app.bicep' = {
     tags: tags
     aiServicesEndpoint: aiServices.outputs.endpoint
     aiServicesName: aiServices.outputs.name
-    deploymentName: modelName
+    deploymentName: deploymentName
     imageName: 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest'
     registryServer: acr.outputs.loginServer
     registryUsername: acr.outputs.name
     registryPassword: acr.outputs.password
+    minReplicas: minReplicas
+    maxReplicas: maxReplicas
   }
 }
 
 output AZURE_AI_ENDPOINT string = aiServices.outputs.endpoint
-output AZURE_AI_DEPLOYMENT string = modelName
+output AZURE_AI_DEPLOYMENT string = deploymentName
 output AZURE_CONTAINER_REGISTRY_ENDPOINT string = acr.outputs.loginServer
 output AZURE_CONTAINER_REGISTRY_NAME string = acr.outputs.name
 output WEB_URI string = containerApp.outputs.uri

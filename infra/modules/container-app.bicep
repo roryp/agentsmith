@@ -29,6 +29,12 @@ param registryUsername string
 @description('ACR password')
 param registryPassword string
 
+@description('Minimum number of replicas for the container app')
+param minReplicas int = 2
+
+@description('Maximum number of replicas for the container app')
+param maxReplicas int = 10
+
 // Log Analytics workspace for Container Apps Environment
 resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2023-09-01' = {
   name: 'log-${name}'
@@ -103,8 +109,8 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
         }
       ]
       scale: {
-        minReplicas: 1
-        maxReplicas: 1
+        minReplicas: minReplicas
+        maxReplicas: maxReplicas
       }
     }
   }

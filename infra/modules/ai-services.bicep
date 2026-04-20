@@ -7,6 +7,9 @@ param location string
 @description('Tags for the resource')
 param tags object = {}
 
+@description('Deployment name exposed to applications')
+param deploymentName string
+
 @description('Model to deploy')
 param modelName string
 
@@ -15,6 +18,9 @@ param modelFormat string
 
 @description('Model version')
 param modelVersion string
+
+@description('Deployment capacity for the model')
+param modelCapacity int = 500
 
 resource aiServices 'Microsoft.CognitiveServices/accounts@2024-10-01' = {
   name: name
@@ -54,11 +60,11 @@ resource lenientFilter 'Microsoft.CognitiveServices/accounts/raiPolicies@2024-10
 // Deploy the model with lenient filter
 resource modelDeployment 'Microsoft.CognitiveServices/accounts/deployments@2024-10-01' = {
   parent: aiServices
-  name: modelName
+  name: deploymentName
   dependsOn: [lenientFilter]
   sku: {
     name: 'GlobalStandard'
-    capacity: 100
+    capacity: modelCapacity
   }
   properties: {
     model: {
