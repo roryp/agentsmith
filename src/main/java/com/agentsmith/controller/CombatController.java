@@ -36,20 +36,6 @@ public class CombatController {
         return emitter;
     }
 
-    /** Pattern 3: Loop — Auto-battle to 5 wins */
-    @GetMapping(value = "/fight/auto", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public SseEmitter fightAuto(@RequestParam(defaultValue = "false") boolean theOne) {
-        SseEmitter emitter = new SseEmitter(300_000L);
-        executor.submit(() -> combatService.runAutoBattle(emitter, theOne));
-        return emitter;
-    }
-
-    /** Default fight — uses sequential */
-    @GetMapping(value = "/fight", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public SseEmitter fight(@RequestParam(defaultValue = "false") boolean theOne) {
-        return fightSequential(theOne);
-    }
-
     @PostMapping("/reset")
     public Map<String, Object> reset() {
         combatService.resetScores();

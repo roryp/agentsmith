@@ -17,3 +17,6 @@ target/
 .playwright-mcp/
 IMAGE_GENERATION_GUIDE.md
 generate-image.py
+
+### Local env ###
+.env

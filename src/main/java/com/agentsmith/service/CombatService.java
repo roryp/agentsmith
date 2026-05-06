@@ -4,7 +4,6 @@ import com.agentsmith.agents.AgentBrown;
 import com.agentsmith.agents.AgentJones;
 import com.agentsmith.agents.AgentSmith;
 import com.agentsmith.agents.ParallelCombatAgent;
-import com.agentsmith.agents.SequentialCombatAgent;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.model.chat.ChatModel;
@@ -27,15 +26,12 @@ public class CombatService {
     private final AgentBrown brownAgent;
     private final AgentJones jonesAgent;
     private final AgentSmith smithAgent;
-    private final ChatModel chatModel;
 
     private final AtomicInteger neoScore = new AtomicInteger(0);
     private final AtomicInteger agentsScore = new AtomicInteger(0);
     private final AtomicInteger currentRound = new AtomicInteger(0);
 
     public CombatService(ChatModel chatModel) {
-        this.chatModel = chatModel;
-
         // Build agents ONCE — eliminates per-request proxy/builder overhead
         this.brownAgent = AgenticServices.agentBuilder(AgentBrown.class)
                 .chatModel(chatModel).outputKey("brownResult").build();
@@ -81,14 +77,6 @@ public class CombatService {
         if (wins) { agentsScore.incrementAndGet(); } else { neoScore.incrementAndGet(); }
         sendEvent(emitter, CombatEvent.of(agent, wins ? "attack-win" : "attack",
                 fallbackMessage(agent, wins, result), round, neoScore.get(), agentsScore.get()));
-    }
-
-    private String roundResult(boolean brownWins, boolean jonesWins, boolean smithWins) {
-        int agentWins = (brownWins ? 1 : 0) + (jonesWins ? 1 : 0) + (smithWins ? 1 : 0);
-        int neoWins = 3 - agentWins;
-        if (agentWins == 3) return "Agents win all 3 fights! Neo is overwhelmed.";
-        if (agentWins == 0) return "Neo wins all 3 fights! The One cannot be stopped.";
-        return "Neo wins " + neoWins + " of 3, Agents win " + agentWins + " of 3. One win is enough — agents win the round!";
     }
 
     // ─── Pattern 1: Sequential (Chain) via AgenticServices.sequenceBuilder() ───
@@ -208,112 +196,6 @@ public class CombatService {
             emitter.complete();
         } catch (Exception e) {
             emitError(emitter, round, e);
-        }
-    }
-
-    // ─── Pattern 3: Loop (Auto-battle to 5 round-wins) via AgenticServices.loopBuilder() ───
-    public void runAutoBattle(SseEmitter emitter, boolean theOne) {
-        try {
-            resetScores();
-            if (theOne) sendProgress(emitter, "Neo is THE ONE. Agent win chances drastically reduced.", 0);
-
-            sendEvent(emitter, CombatEvent.of("System", "system",
-                    "AUTO-BATTLE: First to 5 round wins!", 0, 0, 0));
-
-            // Non-AI agent: setup each round — rolls random outcomes, writes prompt to scope
-            var roundSetup = AgenticServices.agentAction(scope -> {
-                boolean isTheOne = scope.readState("theOne", false);
-                boolean[] outcomes = rollOutcomes(isTheOne);
-                int round = scope.readState("round", 0) + 1;
-                scope.writeState("round", round);
-                scope.writeState("brownWins", outcomes[0]);
-                scope.writeState("jonesWins", outcomes[1]);
-                scope.writeState("smithWins", outcomes[2]);
-                scope.writeState("request", "Round " + round
-                        + ". Agent Brown: " + (outcomes[0] ? "WIN" : "LOSE")
-                        + ". Agent Jones: " + (outcomes[1] ? "WIN" : "LOSE")
-                        + ". Agent Smith: " + (outcomes[2] ? "WIN" : "LOSE")
-                        + ". One sentence.");
-                sendProgress(emitter, "Loop iteration " + round + ": roundSetup → parallelCombat → roundScorer", round);
-            });
-
-            // Non-AI agent: score each round — reads results from scope, updates scores, sends SSE events
-            var roundScorer = AgenticServices.agentAction(scope -> {
-                boolean bw = scope.readState("brownWins", false);
-                boolean jw = scope.readState("jonesWins", false);
-                boolean sw = scope.readState("smithWins", false);
-                int round = scope.readState("round", 0);
-                currentRound.set(round);
-
-                String brownResult = scope.readState("brownResult", "");
-                String jonesResult = scope.readState("jonesResult", "");
-                String smithResult = scope.readState("smithResult", "");
-
-                sendProgress(emitter, "Round " + round + ": All 3 LLM responses received. Scoring...", round);
-
-                // Emit individual fight results
-                sendEvent(emitter, CombatEvent.of("Brown", bw ? "attack-win" : "attack",
-                        fallbackMessage("Brown", bw, brownResult), round, neoScore.get(), agentsScore.get()));
-                sendEvent(emitter, CombatEvent.of("Jones", jw ? "attack-win" : "attack",
-                        fallbackMessage("Jones", jw, jonesResult), round, neoScore.get(), agentsScore.get()));
-                sendEvent(emitter, CombatEvent.of("Smith", sw ? "attack-win" : "attack",
-                        fallbackMessage("Smith", sw, smithResult), round, neoScore.get(), agentsScore.get()));
-
-                // Any agent win means Neo loses — agents win the round
-                int agentSubWins = (bw ? 1 : 0) + (jw ? 1 : 0) + (sw ? 1 : 0);
-                if (agentSubWins >= 1) { agentsScore.incrementAndGet(); }
-                else { neoScore.incrementAndGet(); }
-                scope.writeState("neoScore", neoScore.get());
-                scope.writeState("agentsScore", agentsScore.get());
-
-                int neoSubWins = 3 - agentSubWins;
-                String result;
-                if (agentSubWins == 0) {
-                    result = "Neo wins all 3! The One cannot be stopped.";
-                } else {
-                    StringBuilder winners = new StringBuilder();
-                    if (bw) winners.append("Brown");
-                    if (jw) { if (winners.length() > 0) winners.append(" & "); winners.append("Jones"); }
-                    if (sw) { if (winners.length() > 0) winners.append(" & "); winners.append("Smith"); }
-                    result = "Neo loses. " + winners + " beat him — fight over.";
-                }
-                sendEvent(emitter, CombatEvent.of("Neo", "result", result,
-                        round, neoScore.get(), agentsScore.get()));
-            });
-
-            // Build parallel workflow for loop sub-agent
-            ParallelCombatAgent parallelAgent = AgenticServices
-                .parallelBuilder(ParallelCombatAgent.class)
-                .subAgents(brownAgent, jonesAgent, smithAgent)
-                .outputKey("combatResults")
-                .output(scope -> Map.of(
-                        "brown", scope.readState("brownResult", ""),
-                        "jones", scope.readState("jonesResult", ""),
-                        "smith", scope.readState("smithResult", "")))
-                .build();
-
-            // Loop workflow: roundSetup → parallelCombat → roundScorer, repeat until Neo loses or wins 5
-            var autoBattleLoop = AgenticServices
-                    .loopBuilder()
-                    .subAgents(roundSetup, parallelAgent, roundScorer)
-                    .maxIterations(10)
-                    .testExitAtLoopEnd(true)
-                    .exitCondition(scope ->
-                            scope.readState("neoScore", 0) >= 5 ||
-                            scope.readState("agentsScore", 0) >= 1)  // One loss = game over
-                    .build();
-
-            // Run the loop with initial scope state
-            autoBattleLoop.invoke(Map.of("theOne", theOne, "neoScore", 0, "agentsScore", 0, "round", 0));
-
-            String winner = agentsScore.get() >= 1
-                    ? "NEO LOSES! The Matrix is restored."
-                    : "NEO SURVIVES 5 ROUNDS! The One cannot be stopped.";
-            sendEvent(emitter, CombatEvent.of("System", "system", winner,
-                    currentRound.get(), neoScore.get(), agentsScore.get()));
-            emitter.complete();
-        } catch (Exception e) {
-            emitError(emitter, currentRound.get(), e);
         }
     }
 
